@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Storeybox Home",
+    "slug": "storeybox-home",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "storeybox",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F5EFE5"
+      }
+    }
+  }
+}
