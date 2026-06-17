@@ -1,8 +1,9 @@
 # Storeybox Home
 
 Storeybox Home is a private memory preservation app. This repository currently
-contains Phase 1 only: the Expo app shell, Supabase authentication, protected
-routing, session persistence, and the initial RLS-protected database schema.
+contains Phase 2: the Expo app shell, Supabase authentication, protected
+routing, session persistence, the initial RLS-protected database schema, and a
+memory timeline backed by Supabase.
 
 ## Setup
 
@@ -16,4 +17,5 @@ routing, session persistence, and the initial RLS-protected database schema.
 The anon key is safe to use in the client when RLS is enabled. Never place the
 Supabase service-role key or an OpenAI API key in an `EXPO_PUBLIC_*` variable.
 
-See `docs/PHASE_1_TESTING.md` for the Phase 1 verification plan.
+See `docs/PHASE_1_TESTING.md` and `docs/PHASE_2_TESTING.md` for verification
+plans.

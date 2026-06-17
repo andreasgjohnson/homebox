@@ -31,17 +31,22 @@ export function AuthForm({ mode }: AuthFormProps) {
       email: email.trim(),
       password,
     };
-    const { data, error } = isSignup
-      ? await supabase.auth.signUp(credentials)
-      : await supabase.auth.signInWithPassword(credentials);
 
-    if (error) {
-      setMessage(error.message);
-    } else if (isSignup && !data.session) {
-      setMessage('Check your email to confirm your account, then sign in.');
+    try {
+      const { data, error } = isSignup
+        ? await supabase.auth.signUp(credentials)
+        : await supabase.auth.signInWithPassword(credentials);
+
+      if (error) {
+        setMessage(error.message);
+      } else if (isSignup && !data.session) {
+        setMessage('Check your email to confirm your account, then sign in.');
+      }
+    } catch {
+      setMessage('Unable to reach Supabase. Check your project URL and network connection.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   }
 
   return (
