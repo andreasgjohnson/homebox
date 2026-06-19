@@ -1,11 +1,20 @@
 import { Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/lib/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 
 function RootNavigator() {
-  const { isLoading, session } = useAuth();
+  const { configError, isLoading, session } = useAuth();
+
+  if (configError) {
+    return (
+      <View style={styles.configError}>
+        <Text style={styles.configTitle}>Configuration needed</Text>
+        <Text style={styles.configText}>{configError}</Text>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -41,5 +50,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     justifyContent: 'center',
+  },
+  configError: {
+    backgroundColor: colors.background,
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  configTitle: {
+    color: colors.ink,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  configText: {
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 24,
   },
 });

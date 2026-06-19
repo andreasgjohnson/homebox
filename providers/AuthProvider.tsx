@@ -8,9 +8,10 @@ import {
   useState,
 } from 'react';
 
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 type AuthContextValue = {
+  configError: string | null;
   isLoading: boolean;
   session: Session | null;
 };
@@ -22,6 +23,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (supabaseConfigError) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -44,7 +50,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const value = useMemo(() => ({ isLoading, session }), [isLoading, session]);
+  const value = useMemo(
+    () => ({ configError: supabaseConfigError, isLoading, session }),
+    [isLoading, session],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
