@@ -3,7 +3,9 @@ create extension if not exists pgcrypto;
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  display_name text
+  display_name text,
+  first_name text,
+  last_name text
 );
 
 create table public.memories (
@@ -37,6 +39,11 @@ create policy "Users can update their own profile"
   using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
 
+create policy "Users can create their own profile"
+  on public.profiles for insert
+  to authenticated
+  with check ((select auth.uid()) = id);
+
 create policy "Users can view their own memories"
   on public.memories for select
   to authenticated
@@ -64,8 +71,13 @@ language plpgsql
 security definer set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, display_name)
-  values (new.id, new.raw_user_meta_data ->> 'display_name');
+  insert into public.profiles (id, display_name, first_name, last_name)
+  values (
+    new.id,
+    new.raw_user_meta_data ->> 'display_name',
+    new.raw_user_meta_data ->> 'first_name',
+    new.raw_user_meta_data ->> 'last_name'
+  );
   return new;
 end;
 $$;

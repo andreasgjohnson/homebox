@@ -13,13 +13,16 @@ import {
 
 import { formatShortDate } from '@/lib/dateFormat';
 import { listMemories, type MemoryListItem } from '@/lib/memories';
+import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { supabase } from '@/lib/supabase';
+import { colors, radii, typography } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function HomeScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [profileName, setProfileName] = useState<string | null>(null);
   const [isLoadingMemories, setIsLoadingMemories] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -32,7 +35,10 @@ export default function HomeScreen() {
     setIsLoadingMemories(true);
     setErrorMessage(null);
 
-    const { data, error } = await listMemories(session.user.id);
+    const [{ data, error }, { data: profile }] = await Promise.all([
+      listMemories(session.user.id),
+      getProfile(session.user.id),
+    ]);
 
     if (error) {
       setErrorMessage(error.message);
@@ -40,6 +46,7 @@ export default function HomeScreen() {
       setMemories(data ?? []);
     }
 
+    setProfileName(getProfileDisplayName(profile ?? null));
     setIsLoadingMemories(false);
   }, [session?.user.id]);
 
@@ -92,7 +99,7 @@ export default function HomeScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No memories yet</Text>
               <Text style={styles.emptyText}>
-                Phase 2 stores placeholder memories now. Audio recording arrives in Phase 3.
+                Begin with one story, reflection, or small moment worth keeping.
               </Text>
             </View>
           ) : null
@@ -103,26 +110,36 @@ export default function HomeScreen() {
               <View style={styles.headerCopy}>
                 <Text style={styles.eyebrow}>YOUR PRIVATE ARCHIVE</Text>
                 <Text style={styles.title}>Memory timeline</Text>
-                <Text style={styles.body}>Signed in as {session?.user.email}.</Text>
+                <Text style={styles.body}>
+                  Signed in as {profileName || session?.user.email}
+                </Text>
               </View>
-              <Pressable
-                disabled={isSigningOut}
-                onPress={() => void signOut()}
-                style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-              >
+              <View style={styles.headerActions}>
+                <Pressable
+                  onPress={() => router.push('/profile' as Href)}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+                >
+                  <Text style={styles.secondaryButtonText}>Settings</Text>
+                </Pressable>
+                <Pressable
+                  disabled={isSigningOut}
+                  onPress={() => void signOut()}
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+                >
                 {isSigningOut ? (
-                  <ActivityIndicator color="#6D4C36" />
-                ) : (
-                  <Text style={styles.secondaryButtonText}>Sign out</Text>
-                )}
-              </Pressable>
+                  <ActivityIndicator color={colors.charcoal} />
+                  ) : (
+                    <Text style={styles.secondaryButtonText}>Sign out</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
 
             <Pressable
               onPress={() => router.push('/memories/new' as Href)}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
             >
-              <Text style={styles.primaryButtonText}>Create memory placeholder</Text>
+              <Text style={styles.primaryButtonText}>Record a memory</Text>
             </Pressable>
 
             <View style={styles.sectionHeader}>
@@ -132,8 +149,8 @@ export default function HomeScreen() {
 
             {isLoadingMemories ? (
               <View style={styles.feedback}>
-                <ActivityIndicator color="#6D4C36" />
-                <Text style={styles.feedbackText}>Loading your archive...</Text>
+                <ActivityIndicator color={colors.charcoal} />
+                <Text style={styles.feedbackText}>Opening your archive...</Text>
               </View>
             ) : null}
 
@@ -156,7 +173,7 @@ function MemorySeparator() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F5EFE5',
+    backgroundColor: colors.background,
     flex: 1,
   },
   container: {
@@ -173,48 +190,47 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  headerActions: {
+    gap: 10,
+  },
   eyebrow: {
-    color: '#946A47',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.6,
+    ...typography.eyebrow,
+    color: colors.goldDark,
     marginBottom: 12,
   },
   title: {
-    color: '#332B24',
-    fontFamily: 'Georgia',
-    fontSize: 36,
-    lineHeight: 43,
+    ...typography.screenTitle,
+    color: colors.ink,
     marginBottom: 10,
   },
   body: {
-    color: '#6E6257',
-    fontSize: 16,
-    lineHeight: 23,
+    ...typography.body,
+    color: colors.muted,
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#6D4C36',
-    borderRadius: 14,
+    backgroundColor: colors.charcoal,
+    borderRadius: radii.control,
     marginBottom: 26,
     paddingVertical: 16,
   },
   primaryButtonText: {
-    color: '#FFF9F0',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   secondaryButton: {
     alignItems: 'center',
-    borderColor: '#BCA893',
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
+    borderRadius: radii.control,
     borderWidth: 1,
     minWidth: 88,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: '#6D4C36',
+    color: colors.charcoal,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -228,62 +244,61 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: '#332B24',
-    fontSize: 19,
-    fontWeight: '700',
+    ...typography.sectionTitle,
+    color: colors.ink,
   },
   sectionCount: {
-    color: '#8B7764',
+    color: colors.blueDark,
     fontSize: 14,
     fontWeight: '700',
   },
   feedback: {
     alignItems: 'center',
-    backgroundColor: '#FFFDF9',
-    borderColor: '#E4D8C8',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     borderWidth: 1,
     padding: 24,
   },
   feedbackText: {
-    color: '#6E6257',
+    color: colors.muted,
     fontSize: 15,
     marginTop: 12,
   },
   notice: {
-    backgroundColor: '#FFF1ED',
-    borderColor: '#E4B8A8',
-    borderRadius: 14,
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.dangerBorder,
+    borderRadius: radii.card,
     borderWidth: 1,
     padding: 16,
   },
   noticeText: {
-    color: '#8A473A',
+    color: colors.danger,
     fontSize: 14,
     lineHeight: 20,
   },
   emptyState: {
-    backgroundColor: '#FFFDF9',
-    borderColor: '#E4D8C8',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     borderWidth: 1,
-    padding: 20,
+    padding: 22,
   },
   emptyTitle: {
-    color: '#332B24',
+    color: colors.ink,
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
   },
   emptyText: {
-    color: '#6E6257',
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
   },
   memoryCard: {
-    backgroundColor: '#FFFDF9',
-    borderColor: '#E4D8C8',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     borderWidth: 1,
     padding: 16,
   },
@@ -295,17 +310,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   memoryTitle: {
-    color: '#332B24',
+    color: colors.ink,
     fontSize: 18,
     fontWeight: '700',
   },
   memoryDate: {
-    color: '#8B7764',
+    color: colors.blueDark,
     fontSize: 13,
     fontWeight: '600',
   },
   memorySummary: {
-    color: '#6E6257',
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -317,13 +332,13 @@ const styles = StyleSheet.create({
   },
   tag: {
     alignItems: 'center',
-    backgroundColor: '#F3E7D8',
-    borderRadius: 999,
+    backgroundColor: colors.surfaceBlue,
+    borderRadius: radii.pill,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   tagText: {
-    color: '#74543D',
+    color: colors.blueDark,
     fontSize: 12,
     fontWeight: '700',
   },

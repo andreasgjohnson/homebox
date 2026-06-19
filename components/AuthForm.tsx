@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { colors, radii, typography } from '@/lib/theme';
 
 type AuthFormProps = {
   mode: 'login' | 'signup';
@@ -65,7 +66,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         keyboardType="email-address"
         onChangeText={setEmail}
         placeholder="Email address"
-        placeholderTextColor="#8D8376"
+        placeholderTextColor={colors.faint}
         style={styles.input}
         value={email}
       />
@@ -74,7 +75,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         autoComplete={isSignup ? 'new-password' : 'current-password'}
         onChangeText={setPassword}
         placeholder="Password"
-        placeholderTextColor="#8D8376"
+        placeholderTextColor={colors.faint}
         secureTextEntry
         style={styles.input}
         value={password}
@@ -91,7 +92,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         ]}
       >
         {isSubmitting ? (
-          <ActivityIndicator color="#FFF9F0" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.buttonText}>{isSignup ? 'Create account' : 'Sign in'}</Text>
         )}
@@ -106,53 +107,52 @@ export function AuthForm({ mode }: AuthFormProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFDF9',
-    borderColor: '#E4D8C8',
-    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.card,
     borderWidth: 1,
     padding: 24,
     width: '100%',
   },
   eyebrow: {
-    color: '#946A47',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.6,
+    ...typography.eyebrow,
+    color: colors.goldDark,
     marginBottom: 14,
   },
   title: {
-    color: '#332B24',
-    fontFamily: 'Georgia',
+    color: colors.ink,
     fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: 0,
     marginBottom: 10,
   },
   subtitle: {
-    color: '#6E6257',
+    color: colors.muted,
     fontSize: 16,
     lineHeight: 23,
     marginBottom: 24,
   },
   input: {
-    backgroundColor: '#F7F1E8',
-    borderColor: '#DED2C2',
-    borderRadius: 14,
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
+    borderRadius: radii.control,
     borderWidth: 1,
-    color: '#332B24',
+    color: colors.ink,
     fontSize: 16,
     marginBottom: 12,
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
   message: {
-    color: '#8A473A',
+    color: colors.danger,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: '#6D4C36',
-    borderRadius: 14,
+    backgroundColor: colors.charcoal,
+    borderRadius: radii.control,
     marginTop: 4,
     paddingVertical: 16,
   },
@@ -160,12 +160,12 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#FFF9F0',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   link: {
-    color: '#74543D',
+    color: colors.blueDark,
     fontSize: 14,
     marginTop: 20,
     textAlign: 'center',

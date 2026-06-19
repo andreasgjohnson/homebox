@@ -60,3 +60,56 @@ export async function createPlaceholderMemory(userId: string) {
     .select(detailMemoryColumns)
     .single();
 }
+
+export async function createRecordedMemory(
+  userId: string,
+  audioPath: string | null,
+  recordedAt: string,
+  title: string,
+) {
+  return supabase
+    .from('memories')
+    .insert({
+      user_id: userId,
+      title,
+      summary: audioPath
+        ? 'This recording is waiting for transcription and summary.'
+        : 'Audio upload is in progress.',
+      transcript: null,
+      emotional_tone: 'Unprocessed',
+      tags: audioPath ? ['recorded', 'uploaded'] : ['recorded', 'uploading'],
+      memorable_quotes: [],
+      audio_url: audioPath,
+      recorded_at: recordedAt,
+    })
+    .select(detailMemoryColumns)
+    .single();
+}
+
+export async function deleteMemory(memoryId: string, userId: string) {
+  return supabase.from('memories').delete().eq('id', memoryId).eq('user_id', userId);
+}
+
+export async function updateMemoryTitle(memoryId: string, userId: string, title: string) {
+  return supabase
+    .from('memories')
+    .update({ title })
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .select(detailMemoryColumns)
+    .single();
+}
+
+export async function updateMemoryAudioPath(memoryId: string, userId: string, audioPath: string) {
+  return supabase
+    .from('memories')
+    .update({
+      audio_url: audioPath,
+      summary: 'This recording is being transcribed and summarized.',
+      tags: ['recorded', 'processing'],
+    })
+    .eq('id', memoryId)
+    .eq('user_id', userId)
+    .select(detailMemoryColumns)
+    .single();
+}

@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet } from 'react-native';
 
+import { colors } from '@/lib/theme';
+
 export function AuthScreen({ children }: PropsWithChildren) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -16,7 +18,7 @@ export function AuthScreen({ children }: PropsWithChildren) {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F5EFE5',
+    backgroundColor: colors.background,
     flex: 1,
   },
   container: {

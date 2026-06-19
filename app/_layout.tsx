@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { colors } from '@/lib/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 
 function RootNavigator() {
@@ -9,7 +10,7 @@ function RootNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#6D4C36" size="large" />
+        <ActivityIndicator color={colors.charcoal} size="large" />
       </View>
     );
   }
@@ -37,7 +38,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   loading: {
     alignItems: 'center',
-    backgroundColor: '#F5EFE5',
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: 'center',
   },
