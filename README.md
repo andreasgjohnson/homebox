@@ -31,6 +31,21 @@ The anon key is safe to use in the client when RLS is enabled. Never place the
 Supabase service-role key or an OpenAI API key in an `EXPO_PUBLIC_*` variable.
 All OpenAI calls run inside `supabase/functions/process-memory`.
 
+## Friend Test Deployment
+
+The simplest non-local beta is a hosted Expo web build on Netlify.
+
+1. Connect this GitHub repo to Netlify.
+2. Use these build settings:
+   - Build command: `pnpm build:web`
+   - Publish directory: `dist`
+3. Add these Netlify environment variables:
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+4. Deploy the site.
+5. In Supabase Auth settings, add the Netlify URL to the allowed site/redirect
+   URLs before inviting testers to sign up.
+
 See `docs/PHASE_1_TESTING.md`, `docs/PHASE_2_TESTING.md`, and
 `docs/PHASE_3_TESTING.md`, `docs/PHASE_4_TESTING.md`, and
 `docs/PHASE_5_TESTING.md`, and `docs/PHASE_6_TESTING.md` for verification

@@ -27,6 +27,10 @@
       "adaptiveIcon": {
         "backgroundColor": "#F5EFE5"
       }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
