@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import { getProfile, updateProfileName } from '@/lib/profiles';
-import { colors, radii, typography } from '@/lib/theme';
+import { colors, fonts, radii, typography } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ProfileScreen() {
@@ -172,24 +172,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
+    alignSelf: 'center',
     flexGrow: 1,
     justifyContent: 'center',
+    maxWidth: 720,
     padding: 24,
     paddingBottom: 40,
+    width: '100%',
   },
   backButton: {
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: colors.surface,
     borderColor: colors.gold,
-    borderRadius: radii.control,
+    borderRadius: radii.pill,
     borderWidth: 1,
     marginBottom: 28,
     paddingHorizontal: 16,
     paddingVertical: 11,
   },
   backButtonText: {
-    color: colors.charcoal,
+    color: colors.ink,
+    fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   formPanel: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceWarm,
     borderColor: colors.border,
     borderRadius: radii.card,
     borderWidth: 1,
@@ -217,6 +221,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     color: colors.ink,
+    fontFamily: fonts.sans,
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 8,
@@ -227,6 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     borderWidth: 1,
     color: colors.ink,
+    fontFamily: fonts.serif,
     fontSize: 17,
     marginBottom: 14,
     paddingHorizontal: 16,
@@ -238,6 +244,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     color: colors.muted,
+    fontFamily: fonts.sans,
     fontSize: 15,
     marginTop: 12,
   },
@@ -251,17 +258,19 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     color: colors.blueDark,
+    fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 20,
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: colors.charcoal,
-    borderRadius: radii.control,
+    backgroundColor: colors.ink,
+    borderRadius: radii.pill,
     paddingVertical: 16,
   },
   primaryButtonText: {
     color: colors.white,
+    fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '700',
   },

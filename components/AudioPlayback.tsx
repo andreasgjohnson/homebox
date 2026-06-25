@@ -1,7 +1,9 @@
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii } from '@/lib/theme';
+import { colors, fonts, radii } from '@/lib/theme';
+
+import { Waveform } from './Waveform';
 
 type AudioPlaybackProps = {
   disabled?: boolean;
@@ -47,6 +49,9 @@ export function AudioPlayback({
             : emptyText}
         </Text>
       </View>
+      <View style={styles.waveformWrap}>
+        <Waveform color={canPlay ? colors.blue : colors.borderStrong} height={34} />
+      </View>
       <Pressable
         disabled={!canPlay}
         onPress={() => void togglePlayback()}
@@ -81,7 +86,7 @@ function formatAudioTime(seconds: number) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceWarm,
     borderColor: colors.border,
     borderRadius: radii.card,
     borderWidth: 1,
@@ -95,22 +100,28 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
+    fontFamily: fonts.serif,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     marginBottom: 5,
   },
   meta: {
     color: colors.muted,
+    fontFamily: fonts.mono,
     fontSize: 13,
-    fontWeight: '600',
+  },
+  waveformWrap: {
+    flex: 1,
+    maxWidth: 240,
+    minWidth: 112,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: colors.charcoal,
-    borderRadius: radii.control,
-    minWidth: 84,
+    backgroundColor: colors.ink,
+    borderRadius: radii.pill,
+    minWidth: 76,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   buttonDisabled: {
     backgroundColor: colors.borderStrong,
@@ -120,6 +131,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.white,
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '700',
   },

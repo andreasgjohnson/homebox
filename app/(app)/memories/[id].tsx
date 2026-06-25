@@ -1,9 +1,9 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   SafeAreaView,
@@ -14,16 +14,27 @@ import {
   View,
 } from 'react-native';
 
-import { AudioPlayback } from '@/components/AudioPlayback';
 import {
   createMemoryAudioSignedUrl,
   isUploadedMemoryAudioPath,
   removeMemoryAudio,
 } from '@/lib/audioStorage';
-import { formatLongDate } from '@/lib/dateFormat';
 import { deleteMemory, getMemory, updateMemoryTitle, type Memory } from '@/lib/memories';
-import { colors, radii, typography } from '@/lib/theme';
+import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
+
+const waveBars = [
+  9, 20, 16, 28, 18, 23, 37, 17, 31, 24, 18, 27, 39, 22, 28, 19, 35, 16, 24, 30, 18, 40, 48, 22,
+  30, 33, 41, 27, 45, 38, 25, 43, 31, 37, 46, 29, 42, 35, 24, 39, 28, 34, 44, 21, 36, 26, 31, 38,
+  28, 22, 35, 27, 32, 41, 25, 30, 23, 34, 28, 20, 31, 24, 29, 18,
+];
+const pinIndexes = new Set([6, 22, 42, 56]);
+
+type MarkedMoment = {
+  quote: string;
+  seconds: number;
+  t: string;
+};
 
 export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,10 +44,14 @@ export default function MemoryDetailScreen() {
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [playbackErrorMessage, setPlaybackErrorMessage] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const player = useAudioPlayer(playbackUri ?? null, { updateInterval: 500 });
+  const playerStatus = useAudioPlayerStatus(player);
 
   const loadMemory = useCallback(async () => {
     if (!session?.user.id || !id) {
@@ -99,6 +114,34 @@ export default function MemoryDetailScreen() {
     };
   }, [memory?.audio_url]);
 
+  const markedMoments = useMemo(() => getMarkedMoments(memory), [memory]);
+  const wordCount = useMemo(() => getWordCount(memory?.transcript), [memory?.transcript]);
+  const summary = personalizeSummary(memory?.summary);
+  const duration = playerStatus.duration || 100;
+  const canPlay = Boolean(playbackUri);
+
+  async function togglePlayback() {
+    if (!canPlay) {
+      return;
+    }
+
+    if (playerStatus.playing) {
+      player.pause();
+      return;
+    }
+
+    player.play();
+  }
+
+  async function playFrom(seconds: number) {
+    if (!canPlay) {
+      return;
+    }
+
+    await player.seekTo(seconds);
+    player.play();
+  }
+
   async function confirmDeleteMemory() {
     if (!session?.user.id || !memory) {
       return;
@@ -125,7 +168,7 @@ export default function MemoryDetailScreen() {
       return;
     }
 
-    router.replace('/' as Href);
+    router.replace('/memories' as Href);
   }
 
   async function saveTitle() {
@@ -148,45 +191,52 @@ export default function MemoryDetailScreen() {
 
     setMemory(data);
     setTitleDraft(data.title || '');
+    setIsEditingTitle(false);
     setIsSavingTitle(false);
   }
 
-  const canSaveTitle =
-    Boolean(memory) &&
-    !isSavingTitle &&
-    titleDraft.trim() !== (memory?.title || 'Untitled memory').trim();
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Pressable onPress={() => router.replace('/' as Href)} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back to timeline</Text>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.replace('/memories' as Href)} style={styles.backLink}>
+          <Text style={styles.backChevron}>‹</Text>
+          <Text style={styles.backText}>Memories</Text>
+        </Pressable>
+        <Text style={styles.wordmark}>STOREYBOX</Text>
+        <View style={styles.privateWrap}>
+          <Text style={styles.privateLabel}>PRIVATE</Text>
+          <Pressable disabled={isDeleting} onPress={() => void confirmDeleteMemory()}>
+            {isDeleting ? (
+              <ActivityIndicator color={colors.faint} />
+            ) : (
+              <Text style={styles.overflow}>⋮</Text>
+            )}
           </Pressable>
+        </View>
+      </View>
 
-          {isLoading ? (
-            <View style={styles.feedback}>
-              <ActivityIndicator color={colors.charcoal} />
-              <Text style={styles.feedbackText}>Opening memory...</Text>
-            </View>
-          ) : null}
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {isLoading ? (
+          <View style={styles.feedback}>
+            <ActivityIndicator color={colors.ink} />
+            <Text style={styles.feedbackText}>Opening memory...</Text>
+          </View>
+        ) : null}
 
-          {errorMessage ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>{errorMessage}</Text>
-            </View>
-          ) : null}
+        {errorMessage ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
-          {!isLoading && memory ? (
-            <View>
-              <Text style={styles.eyebrow}>MEMORY DETAIL</Text>
-              <View style={styles.titlePanel}>
-                <Text style={styles.inputLabel}>Edit title</Text>
-                <Text style={styles.inputHint}>Rename this memory anytime.</Text>
-                <View style={styles.titleEditRow}>
+        {!isLoading && memory ? (
+          <>
+            <View style={styles.header}>
+              <Text style={styles.dateLine}>
+                {formatDetailDate(memory.recorded_at)} · {formatAudioTime(duration)}
+              </Text>
+              {isEditingTitle ? (
+                <View style={styles.titleEditor}>
                   <TextInput
                     autoCapitalize="sentences"
                     editable={!isSavingTitle}
@@ -198,98 +248,192 @@ export default function MemoryDetailScreen() {
                     value={titleDraft}
                   />
                   <Pressable
-                    disabled={!canSaveTitle}
+                    disabled={isSavingTitle}
                     onPress={() => void saveTitle()}
-                    style={({ pressed }) => [
-                      styles.saveTitleButton,
-                      !canSaveTitle && styles.buttonDisabled,
-                      pressed && styles.buttonPressed,
-                    ]}
+                    style={styles.saveTitleButton}
                   >
                     {isSavingTitle ? (
                       <ActivityIndicator color={colors.white} />
                     ) : (
-                      <Text style={styles.saveTitleButtonText}>Save</Text>
+                      <Text style={styles.saveTitleText}>Save</Text>
                     )}
                   </Pressable>
                 </View>
-              </View>
-              <Text style={styles.date}>{formatLongDate(memory.recorded_at)}</Text>
+              ) : (
+                <Text style={styles.title}>{memory.title || 'Untitled memory'}</Text>
+              )}
+            </View>
 
-              {memory.audio_url ? (
-                <View style={styles.audioPanel}>
-                  <AudioPlayback
-                    emptyText="Preparing private playback link..."
-                    title="Recorded audio"
-                    uri={playbackUri}
-                  />
-                  {playbackErrorMessage ? (
-                    <Text style={styles.playbackErrorText}>{playbackErrorMessage}</Text>
-                  ) : null}
-                </View>
-              ) : null}
+            <View style={styles.audioCard}>
+              <Pressable
+                disabled={!canPlay}
+                onPress={() => void togglePlayback()}
+                style={[styles.playButton, !canPlay && styles.disabled]}
+              >
+                <Text style={styles.playIcon}>{playerStatus.playing ? 'Ⅱ' : '▶'}</Text>
+              </Pressable>
+              <View style={styles.waveform}>
+                {waveBars.map((height, index) => {
+                  const isPin = pinIndexes.has(index);
+                  const pin = markedMoments[index % Math.max(markedMoments.length, 1)];
 
-              <InfoSection title="Summary" value={memory.summary || 'No summary yet.'} />
-              <InfoSection title="Transcript" value={memory.transcript || 'No transcript yet.'} />
-              <InfoSection
-                title="Emotional tone"
-                value={memory.emotional_tone || 'Not processed yet.'}
-              />
-              <InfoSection
-                title="Memorable quotes"
-                value={
-                  memory.memorable_quotes?.length
-                    ? memory.memorable_quotes.join('\n\n')
-                    : 'No memorable quotes yet.'
-                }
-              />
-
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>Tags</Text>
-                <View style={styles.tagRow}>
-                  {(memory.tags?.length ? memory.tags : ['draft']).map((tag) => (
-                    <View key={tag} style={styles.tag}>
-                      <Text style={styles.tagText}>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.dangerPanel}>
-                <Text style={styles.dangerTitle}>Delete memory</Text>
-                <Text style={styles.dangerText}>
-                  Remove this memory from your archive. This cannot be undone.
-                </Text>
-                <Pressable
-                  disabled={isDeleting}
-                  onPress={() => void confirmDeleteMemory()}
-                  style={({ pressed }) => [
-                    styles.deleteButton,
-                    (pressed || isDeleting) && styles.buttonPressed,
-                  ]}
-                >
-                  {isDeleting ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : (
-                    <Text style={styles.deleteButtonText}>Delete memory</Text>
-                  )}
-                </Pressable>
+                  return (
+                    <Pressable
+                      disabled={!isPin || !pin}
+                      key={`${height}-${index}`}
+                      onPress={() => pin && void playFrom(pin.seconds)}
+                      style={[
+                        styles.waveBar,
+                        {
+                          backgroundColor: isPin ? '#C0883F' : '#A8BCCD',
+                          height: isPin ? Math.max(height, 34) : height,
+                        },
+                      ]}
+                    />
+                  );
+                })}
               </View>
             </View>
-          ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            {playbackErrorMessage ? (
+              <Text style={styles.playbackErrorText}>{playbackErrorMessage}</Text>
+            ) : null}
+
+            <Text style={styles.sectionLabel}>WHAT THIS HELD</Text>
+            <Text style={styles.summary}>{summary || 'No summary yet.'}</Text>
+
+            <Text style={styles.sectionLabel}>
+              MOMENTS WORTH KEEPING <Text style={styles.sectionHint}>· tap to play</Text>
+            </Text>
+            <View style={styles.markedList}>
+              {markedMoments.map((moment) => (
+                <Pressable
+                  key={`${moment.t}-${moment.quote}`}
+                  onPress={() => void playFrom(moment.seconds)}
+                  style={styles.markedRow}
+                >
+                  <View style={styles.timePill}>
+                    <View style={styles.timeDot} />
+                    <Text style={styles.timeText}>{moment.t}</Text>
+                  </View>
+                  <Text style={styles.quote}>“{moment.quote}”</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => setIsTranscriptOpen((current) => !current)}
+              style={styles.transcriptToggle}
+            >
+              <View>
+                <Text style={styles.transcriptLabel}>FULL TRANSCRIPT</Text>
+                <Text style={styles.transcriptMeta}>What you said — {wordCount} words</Text>
+              </View>
+              <Text style={styles.chevron}>{isTranscriptOpen ? '⌃' : '⌄'}</Text>
+            </Pressable>
+
+            {isTranscriptOpen ? (
+              <Text style={styles.transcript}>{memory.transcript || 'No transcript yet.'}</Text>
+            ) : null}
+
+            <Text style={styles.sectionLabel}>THEMES</Text>
+            <View style={styles.chipRow}>
+              {(memory.tags?.length ? memory.tags : ['draft']).map((tag) => (
+                <View key={tag} style={styles.chip}>
+                  <Text style={styles.chipText}>{tag}</Text>
+                </View>
+              ))}
+              {memory.emotional_tone ? (
+                <View style={styles.textureChip}>
+                  <View
+                    style={[
+                      styles.textureDot,
+                      { backgroundColor: getTextureColor(memory.emotional_tone) },
+                    ]}
+                  />
+                  <Text style={styles.chipText}>{memory.emotional_tone}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.actionRow}>
+              <Pressable onPress={() => setIsEditingTitle(true)} style={styles.actionPill}>
+                <Text style={styles.actionText}>Edit title</Text>
+              </Pressable>
+              <View style={styles.actionPill}>
+                <Text style={styles.actionText}>Edit themes</Text>
+              </View>
+              <View style={styles.actionPill}>
+                <Text style={styles.actionText}>Add a person</Text>
+              </View>
+              <View style={styles.actionPill}>
+                <Text style={styles.actionText}>Download</Text>
+              </View>
+            </View>
+            <Text style={styles.footer}>Sharing off · your story stays yours.</Text>
+          </>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function InfoSection({ title, value }: { title: string; value: string }) {
-  return (
-    <View style={styles.panel}>
-      <Text style={styles.panelTitle}>{title}</Text>
-      <Text style={styles.panelText}>{value}</Text>
-    </View>
-  );
+function getMarkedMoments(memory: Memory | null): MarkedMoment[] {
+  const quotes = memory?.memorable_quotes?.length
+    ? memory.memorable_quotes
+    : splitSummary(memory?.summary).slice(0, 4);
+  const times = [9, 41, 68, 87];
+
+  return (quotes.length ? quotes : ['This memory is still being processed.']).slice(0, 4).map((quote, index) => ({
+    quote: quote.replace(/^["“]|["”]$/g, ''),
+    seconds: times[index] ?? 9,
+    t: formatAudioTime(times[index] ?? 9),
+  }));
+}
+
+function splitSummary(summary: string | null | undefined) {
+  if (!summary) {
+    return [];
+  }
+
+  return summary
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function personalizeSummary(summary: string | null | undefined) {
+  return summary
+    ?.replace(/\bthe speaker's\b/gi, 'your')
+    .replace(/\bthe speaker\b/gi, 'you')
+    .replace(/\bspeaker's\b/gi, 'your')
+    .replace(/\bspeaker\b/gi, 'you');
+}
+
+function getWordCount(transcript: string | null | undefined) {
+  return transcript?.trim().split(/\s+/).filter(Boolean).length ?? 0;
+}
+
+function formatDetailDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+    .format(new Date(value))
+    .toUpperCase();
+}
+
+function formatAudioTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '0:00';
+  }
+
+  const roundedSeconds = Math.floor(seconds);
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainingSeconds = roundedSeconds % 60;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 function confirmDelete(title: string) {
@@ -312,201 +456,347 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
   },
-  keyboardView: {
-    flex: 1,
+  topBar: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+  },
+  backLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    minWidth: 110,
+  },
+  backChevron: {
+    color: '#5A6470',
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    lineHeight: 14,
+  },
+  backText: {
+    color: '#5A6470',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  wordmark: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    fontWeight: '400',
+    letterSpacing: 3.12,
+  },
+  privateWrap: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+    justifyContent: 'flex-end',
+    minWidth: 110,
+  },
+  privateLabel: {
+    color: '#A6A092',
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 1.32,
+  },
+  overflow: {
+    color: colors.faint,
+    fontSize: 21,
+    lineHeight: 20,
   },
   container: {
-    padding: 24,
+    alignSelf: 'center',
+    maxWidth: 680,
     paddingBottom: 40,
+    paddingHorizontal: 36,
+    width: '100%',
   },
-  backButton: {
+  header: {
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderColor: colors.gold,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    marginBottom: 28,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    marginTop: 32,
   },
-  backButtonText: {
-    color: colors.charcoal,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  eyebrow: {
-    ...typography.eyebrow,
-    color: colors.goldDark,
-    marginBottom: 14,
-  },
-  date: {
-    color: colors.blueDark,
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 24,
-  },
-  inputLabel: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  inputHint: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
+  dateLine: {
+    color: '#A6A092',
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 1.76,
+    lineHeight: 11,
     marginBottom: 12,
+    textAlign: 'center',
   },
-  titlePanel: {
-    backgroundColor: colors.surfaceBlue,
-    borderColor: colors.blue,
-    borderRadius: radii.card,
-    borderWidth: 2,
-    boxShadow: '0 8px 18px rgba(32, 39, 43, 0.08)',
-    marginBottom: 14,
-    padding: 16,
+  title: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 32,
+    fontWeight: '300',
+    lineHeight: 37.12,
+    textAlign: 'center',
   },
-  titleEditRow: {
-    alignItems: 'stretch',
+  titleEditor: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10,
+    width: '100%',
   },
   titleInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.blue,
-    borderRadius: radii.control,
-    borderWidth: 2,
+    borderBottomColor: colors.borderStrong,
+    borderBottomWidth: 1,
     color: colors.ink,
     flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    minHeight: 56,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    fontFamily: fonts.serif,
+    fontSize: 26,
+    fontWeight: '300',
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   saveTitleButton: {
     alignItems: 'center',
-    backgroundColor: colors.charcoal,
-    borderRadius: radii.control,
-    justifyContent: 'center',
-    minWidth: 78,
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    minWidth: 72,
     paddingHorizontal: 14,
+    paddingVertical: 9,
   },
-  saveTitleButtonText: {
+  saveTitleText: {
     color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '600',
   },
-  panel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.card,
+  audioCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#E7E0D2',
+    borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 14,
-    padding: 18,
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 20,
   },
-  audioPanel: {
-    marginBottom: 14,
+  playButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 23,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  playIcon: {
+    color: '#CDD9E5',
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  waveform: {
+    alignItems: 'flex-end',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 2,
+    height: 44,
+  },
+  waveBar: {
+    borderRadius: 3,
+    flex: 1,
+    maxWidth: 3,
+    minWidth: 2.5,
   },
   playbackErrorText: {
     color: colors.danger,
+    fontFamily: fonts.sans,
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8,
   },
-  panelTitle: {
-    color: colors.ink,
-    fontSize: 17,
+  sectionLabel: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 1.98,
+    lineHeight: 11,
+    marginBottom: 12,
+    marginTop: 26,
+  },
+  sectionHint: {
+    color: '#BCB6A6',
+  },
+  summary: {
+    color: '#33302A',
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    fontWeight: '400',
+    lineHeight: 28.8,
+    margin: 0,
+  },
+  markedList: {
+    gap: 10,
+  },
+  markedRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 13,
+  },
+  timePill: {
+    alignItems: 'center',
+    backgroundColor: '#F6ECE0',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  timeDot: {
+    backgroundColor: '#C0883F',
+    borderRadius: 2.5,
+    height: 5,
+    width: 5,
+  },
+  timeText: {
+    color: '#B07A3A',
+    fontFamily: fonts.mono,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 8,
   },
-  panelText: {
-    color: colors.muted,
+  quote: {
+    color: '#5A6470',
+    flex: 1,
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 23.8,
+  },
+  transcriptToggle: {
+    alignItems: 'center',
+    borderColor: colors.borderStrong,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 28,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+  },
+  transcriptLabel: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 1.76,
+    marginBottom: 5,
+  },
+  transcriptMeta: {
+    color: '#8A939E',
+    fontFamily: fonts.sans,
     fontSize: 15,
-    lineHeight: 22,
+    fontWeight: '400',
   },
-  tagRow: {
+  chevron: {
+    color: colors.faint,
+    fontSize: 24,
+    lineHeight: 24,
+  },
+  transcript: {
+    color: '#33302A',
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    fontWeight: '400',
+    lineHeight: 30,
+    marginTop: 18,
+  },
+  chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  tag: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceBlue,
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  chip: {
+    borderColor: '#D8E2EA',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
-  tagText: {
-    color: colors.blueDark,
+  textureChip: {
+    alignItems: 'center',
+    borderColor: '#D8E2EA',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  textureDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  chipText: {
+    color: colors.blue,
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    marginTop: 32,
+  },
+  actionPill: {
+    borderColor: '#D3CCBE',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  actionText: {
+    color: '#4A525D',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  footer: {
+    color: '#B0A894',
+    fontFamily: fonts.mono,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
+    marginTop: 18,
+    textAlign: 'center',
   },
   feedback: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radii.card,
-    borderWidth: 1,
-    padding: 24,
+    marginTop: 32,
   },
   feedbackText: {
     color: colors.muted,
+    fontFamily: fonts.sans,
     fontSize: 15,
     marginTop: 12,
   },
   notice: {
     backgroundColor: colors.dangerSurface,
     borderColor: colors.dangerBorder,
-    borderRadius: radii.card,
+    borderRadius: 14,
     borderWidth: 1,
+    marginTop: 24,
     padding: 16,
   },
   noticeText: {
     color: colors.danger,
+    fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 20,
   },
-  dangerPanel: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: radii.card,
-    borderWidth: 1,
-    marginTop: 10,
-    padding: 18,
-  },
-  dangerTitle: {
-    color: colors.danger,
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  dangerText: {
-    color: colors.danger,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  deleteButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: colors.danger,
-    borderRadius: radii.control,
-    minWidth: 140,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  deleteButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  buttonPressed: {
-    opacity: 0.65,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
+  disabled: {
+    opacity: 0.55,
   },
 });

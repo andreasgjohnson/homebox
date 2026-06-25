@@ -16,10 +16,10 @@ export type Memory = {
 
 export type MemoryListItem = Pick<
   Memory,
-  'id' | 'user_id' | 'title' | 'summary' | 'tags' | 'recorded_at' | 'created_at'
+  'id' | 'user_id' | 'title' | 'summary' | 'emotional_tone' | 'tags' | 'recorded_at' | 'created_at'
 >;
 
-const listMemoryColumns = 'id,user_id,title,summary,tags,recorded_at,created_at';
+const listMemoryColumns = 'id,user_id,title,summary,emotional_tone,tags,recorded_at,created_at';
 
 const detailMemoryColumns =
   'id,user_id,title,summary,transcript,emotional_tone,tags,memorable_quotes,audio_url,recorded_at,created_at';

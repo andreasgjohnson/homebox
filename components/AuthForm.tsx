@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-import { colors, radii, typography } from '@/lib/theme';
+import { colors, fonts, radii, typography } from '@/lib/theme';
 
 type AuthFormProps = {
   mode: 'login' | 'signup';
@@ -107,7 +107,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceWarm,
     borderColor: colors.border,
     borderRadius: radii.card,
     borderWidth: 1,
@@ -121,13 +121,15 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    fontWeight: '700',
+    fontFamily: fonts.serif,
+    fontSize: 38,
+    fontWeight: '300',
     letterSpacing: 0,
     marginBottom: 10,
   },
   subtitle: {
     color: colors.muted,
+    fontFamily: fonts.sans,
     fontSize: 16,
     lineHeight: 23,
     marginBottom: 24,
@@ -138,6 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     borderWidth: 1,
     color: colors.ink,
+    fontFamily: fonts.sans,
     fontSize: 16,
     marginBottom: 12,
     paddingHorizontal: 16,
@@ -145,14 +148,15 @@ const styles = StyleSheet.create({
   },
   message: {
     color: colors.danger,
+    fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: colors.charcoal,
-    borderRadius: radii.control,
+    backgroundColor: colors.ink,
+    borderRadius: radii.pill,
     marginTop: 4,
     paddingVertical: 16,
   },
@@ -161,11 +165,13 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.white,
+    fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '700',
   },
   link: {
     color: colors.blueDark,
+    fontFamily: fonts.sans,
     fontSize: 14,
     marginTop: 20,
     textAlign: 'center',
