@@ -2,6 +2,7 @@ import { type Href, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,13 @@ import {
   View,
 } from 'react-native';
 
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import {
+  getProfilePhotoPath,
+  getProfilePhotoPreviewUrl,
+  removeProfilePhoto,
+  uploadProfilePhoto,
+} from '@/lib/profilePhotos';
 import { getProfile, updateProfileName } from '@/lib/profiles';
 import { colors, fonts, radii, typography } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
@@ -22,8 +30,11 @@ export default function ProfileScreen() {
   const { session } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +59,8 @@ export default function ProfileScreen() {
       } else {
         setFirstName(data.first_name || '');
         setLastName(data.last_name || '');
+        setAvatarPath(data.avatar_url || null);
+        setAvatarPreviewUrl(await getProfilePhotoPreviewUrl(data.avatar_url));
       }
 
       setIsLoading(false);
@@ -78,11 +91,99 @@ export default function ProfileScreen() {
 
     setFirstName(data.first_name || '');
     setLastName(data.last_name || '');
+    setAvatarPath(data.avatar_url || null);
     setMessage('Profile saved.');
     setIsSaving(false);
   }
 
-  const canSave = !isLoading && !isSaving && Boolean(firstName.trim() || lastName.trim());
+  function chooseProfilePhoto() {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      setMessage('Profile photo upload is currently available on the web app.');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = () => {
+      const file = input.files?.[0];
+
+      if (file) {
+        void saveProfilePhoto(file);
+      }
+    };
+    input.click();
+  }
+
+  async function saveProfilePhoto(file: File) {
+    if (!session?.user.id) {
+      return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Choose an image smaller than 5 MB.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setMessage(null);
+
+    const photoPath = getProfilePhotoPath(session.user.id, file.name, file.type);
+    const { error: uploadError } = await uploadProfilePhoto(file, photoPath, file.type);
+
+    if (uploadError) {
+      setMessage(getPhotoErrorMessage(uploadError.message));
+      setIsUploadingPhoto(false);
+      return;
+    }
+
+    const { data, error } = await updateProfileName(session.user.id, firstName, lastName, photoPath);
+
+    if (error) {
+      setMessage(getPhotoErrorMessage(error.message));
+      setIsUploadingPhoto(false);
+      return;
+    }
+
+    setFirstName(data.first_name || '');
+    setLastName(data.last_name || '');
+    setAvatarPath(data.avatar_url || null);
+    setAvatarPreviewUrl(await getProfilePhotoPreviewUrl(data.avatar_url));
+    setMessage('Profile photo saved.');
+    setIsUploadingPhoto(false);
+  }
+
+  async function clearProfilePhoto() {
+    if (!session?.user.id || !avatarPath) {
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setMessage(null);
+
+    await removeProfilePhoto(avatarPath);
+    const { data, error } = await updateProfileName(session.user.id, firstName, lastName, null);
+
+    if (error) {
+      setMessage(getPhotoErrorMessage(error.message));
+      setIsUploadingPhoto(false);
+      return;
+    }
+
+    setFirstName(data.first_name || '');
+    setLastName(data.last_name || '');
+    setAvatarPath(null);
+    setAvatarPreviewUrl(null);
+    setMessage('Profile photo removed.');
+    setIsUploadingPhoto(false);
+  }
+
+  const canSave = !isLoading && !isSaving && !isUploadingPhoto && Boolean(firstName.trim() || lastName.trim());
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -90,15 +191,20 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Pressable onPress={() => router.replace('/' as Href)} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Back to timeline</Text>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.replace('/' as Href)} style={styles.backLink}>
+            <Text style={styles.backChevron}>‹</Text>
+            <Text style={styles.backText}>Dashboard</Text>
           </Pressable>
+          <StoreyboxWordmark />
+          <Text style={styles.privateLabel}>PRIVATE</Text>
+        </View>
 
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Text style={styles.eyebrow}>SETTINGS</Text>
           <Text style={styles.title}>Your archive</Text>
           <Text style={styles.body}>
-            Your name helps Storeybox write memories back to you with the right voice.
+            Your name and photo help Storeybox feel like your own private archive.
           </Text>
 
           <View style={styles.formPanel}>
@@ -109,6 +215,54 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <View>
+                <View style={styles.photoSection}>
+                  <View style={styles.photoPreview}>
+                    {avatarPreviewUrl ? (
+                      <Image source={{ uri: avatarPreviewUrl }} style={styles.photoImage} />
+                    ) : (
+                      <Text style={styles.photoInitial}>
+                        {(firstName || session?.user.email || 'A').slice(0, 1).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.photoActions}>
+                    <Text style={styles.inputLabel}>Profile picture</Text>
+                    <Text style={styles.photoHelp}>Optional. This appears in the top-right settings button.</Text>
+                    <View style={styles.photoButtonRow}>
+                      <Pressable
+                        disabled={isUploadingPhoto || isSaving}
+                        onPress={chooseProfilePhoto}
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          (isUploadingPhoto || isSaving) && styles.buttonDisabled,
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        {isUploadingPhoto ? (
+                          <ActivityIndicator color={colors.ink} />
+                        ) : (
+                          <Text style={styles.secondaryButtonText}>
+                            {avatarPath ? 'Change photo' : 'Add photo'}
+                          </Text>
+                        )}
+                      </Pressable>
+                      {avatarPath ? (
+                        <Pressable
+                          disabled={isUploadingPhoto || isSaving}
+                          onPress={() => void clearProfilePhoto()}
+                          style={({ pressed }) => [
+                            styles.removeButton,
+                            (isUploadingPhoto || isSaving) && styles.buttonDisabled,
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <Text style={styles.removeButtonText}>Remove</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+
                 <Text style={styles.inputLabel}>First name</Text>
                 <TextInput
                   autoCapitalize="words"
@@ -171,6 +325,42 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  topBar: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 30,
+    paddingVertical: 20,
+  },
+  backLink: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    minWidth: 86,
+  },
+  backChevron: {
+    color: '#5A6470',
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    lineHeight: 14,
+  },
+  backText: {
+    color: '#5A6470',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  privateLabel: {
+    color: '#A6A092',
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 1.32,
+    minWidth: 86,
+    textAlign: 'right',
+  },
   container: {
     alignSelf: 'center',
     flexGrow: 1,
@@ -179,23 +369,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     width: '100%',
-  },
-  backButton: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderColor: colors.gold,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    marginBottom: 28,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  backButtonText: {
-    color: colors.ink,
-    fontFamily: fonts.sans,
-    fontSize: 16,
-    fontWeight: '800',
   },
   eyebrow: {
     ...typography.eyebrow,
@@ -218,6 +391,78 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 24,
     padding: 18,
+  },
+  photoSection: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 18,
+    marginBottom: 18,
+    paddingBottom: 18,
+  },
+  photoPreview: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderColor: colors.borderStrong,
+    borderRadius: 38,
+    borderWidth: 1,
+    height: 76,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 76,
+  },
+  photoImage: {
+    height: 76,
+    width: 76,
+  },
+  photoInitial: {
+    color: colors.background,
+    fontFamily: fonts.sans,
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  photoActions: {
+    flex: 1,
+  },
+  photoHelp: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  photoButtonRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: colors.borderStrong,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    minWidth: 112,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+  },
+  secondaryButtonText: {
+    color: colors.ink,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  removeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  removeButtonText: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '700',
   },
   inputLabel: {
     color: colors.ink,
@@ -281,3 +526,15 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
 });
+
+function getPhotoErrorMessage(message: string) {
+  if (message.toLowerCase().includes('bucket not found')) {
+    return 'Profile photos are not ready yet: apply the Supabase profile photos migration.';
+  }
+
+  if (message.toLowerCase().includes('avatar_url')) {
+    return 'Profile photos are not ready yet: add the avatar_url column with the latest Supabase migration.';
+  }
+
+  return message;
+}

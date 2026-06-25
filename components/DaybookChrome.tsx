@@ -1,11 +1,12 @@
 import { type Href, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, fonts, radii } from '@/lib/theme';
 
 type DaybookChromeProps = {
+  avatarUrl?: string | null;
   children: ReactNode;
   isSigningOut?: boolean;
   memoryCount?: number;
@@ -24,6 +25,7 @@ const navItems: Array<{ href: Href; label: string }> = [
 ];
 
 export function DaybookChrome({
+  avatarUrl,
   children,
   isSigningOut = false,
   memoryCount = 0,
@@ -44,10 +46,12 @@ export function DaybookChrome({
     <View style={styles.shell}>
       <View style={styles.topBar}>
         <MenuButton onPress={() => setIsDrawerOpen(true)} />
-        <Text style={styles.wordmark}>STOREYBOX</Text>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{userInitial}</Text>
-        </View>
+        <StoreyboxWordmark />
+        <ProfileAvatar
+          avatarUrl={avatarUrl}
+          onPress={() => router.push('/profile' as Href)}
+          userInitial={userInitial}
+        />
       </View>
 
       {children}
@@ -60,6 +64,7 @@ export function DaybookChrome({
         onNavigate={navigate}
         onSignOut={onSignOut}
         returningThemes={returningThemes}
+        avatarUrl={avatarUrl}
         userInitial={userInitial}
         userName={userName}
       />
@@ -68,6 +73,7 @@ export function DaybookChrome({
 }
 
 export function StoreyboxDrawer({
+  avatarUrl,
   isOpen,
   isSigningOut = false,
   memoryCount = 0,
@@ -95,9 +101,7 @@ export function StoreyboxDrawer({
           </View>
 
           <View style={styles.userRow}>
-            <View style={styles.largeAvatar}>
-              <Text style={styles.largeAvatarText}>{userInitial}</Text>
-            </View>
+            <ProfileAvatar avatarUrl={avatarUrl} size="large" userInitial={userInitial} />
             <View>
               <Text style={styles.userName}>{userName || 'Your archive'}</Text>
               <Text style={styles.userMeta}>{memoryCount} moments kept</Text>
@@ -139,6 +143,60 @@ export function StoreyboxDrawer({
         </View>
       </View>
     </Modal>
+  );
+}
+
+export function StoreyboxWordmark() {
+  const router = useRouter();
+
+  return (
+    <Pressable
+      accessibilityLabel="Go to dashboard"
+      accessibilityRole="link"
+      hitSlop={10}
+      onPress={() => router.replace('/' as Href)}
+      style={styles.wordmarkButton}
+    >
+      <Text style={styles.wordmark}>STOREYBOX</Text>
+    </Pressable>
+  );
+}
+
+export function ProfileAvatar({
+  avatarUrl,
+  onPress,
+  size = 'small',
+  userInitial = 'A',
+}: {
+  avatarUrl?: string | null;
+  onPress?: () => void;
+  size?: 'small' | 'large';
+  userInitial?: string;
+}) {
+  const avatarStyle = size === 'large' ? styles.largeAvatar : styles.avatar;
+  const imageStyle = size === 'large' ? styles.largeAvatarImage : styles.avatarImage;
+  const textStyle = size === 'large' ? styles.largeAvatarText : styles.avatarText;
+
+  const content = avatarUrl ? (
+    <Image source={{ uri: avatarUrl }} style={imageStyle} />
+  ) : (
+    <Text style={textStyle}>{userInitial}</Text>
+  );
+
+  if (!onPress) {
+    return <View style={avatarStyle}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityLabel="Open profile settings"
+      accessibilityRole="button"
+      hitSlop={10}
+      onPress={onPress}
+      style={({ pressed }) => [avatarStyle, pressed && styles.avatarPressed]}
+    >
+      {content}
+    </Pressable>
   );
 }
 
@@ -202,13 +260,25 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 3.12,
   },
+  wordmarkButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatar: {
     alignItems: 'center',
     backgroundColor: colors.ink,
     borderRadius: 16,
     height: 32,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 32,
+  },
+  avatarImage: {
+    height: 32,
+    width: 32,
+  },
+  avatarPressed: {
+    opacity: 0.72,
   },
   avatarText: {
     color: colors.background,
@@ -267,6 +337,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     height: 44,
     justifyContent: 'center',
+    overflow: 'hidden',
+    width: 44,
+  },
+  largeAvatarImage: {
+    height: 44,
     width: 44,
   },
   largeAvatarText: {

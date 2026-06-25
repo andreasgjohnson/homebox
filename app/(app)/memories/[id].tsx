@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   createMemoryAudioSignedUrl,
   isUploadedMemoryAudioPath,
@@ -202,7 +203,7 @@ export default function MemoryDetailScreen() {
           <Text style={styles.backChevron}>‹</Text>
           <Text style={styles.backText}>Memories</Text>
         </Pressable>
-        <Text style={styles.wordmark}>STOREYBOX</Text>
+        <StoreyboxWordmark />
         <View style={styles.privateWrap}>
           <Text style={styles.privateLabel}>PRIVATE</Text>
           <Pressable disabled={isDeleting} onPress={() => void confirmDeleteMemory()}>

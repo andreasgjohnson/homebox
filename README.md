@@ -20,12 +20,14 @@ archive experience.
    the private `memory-audio` bucket and storage policies.
 5. Apply `supabase/migrations/20260619010000_profile_names.sql` to add first
    and last name fields for personalized summaries.
-6. Set the OpenAI API key as a Supabase Edge Function secret:
+6. Apply `supabase/migrations/20260625090000_profile_photos.sql` to add the
+   optional profile photo field and private `profile-photos` bucket.
+7. Set the OpenAI API key as a Supabase Edge Function secret:
    `supabase secrets set OPENAI_API_KEY=sk-...`.
-7. Deploy the Phase 5 processor with
+8. Deploy the Phase 5 processor with
    `supabase functions deploy process-memory`.
-8. Install dependencies with `pnpm install`.
-9. Start the app with `pnpm start`.
+9. Install dependencies with `pnpm install`.
+10. Start the app with `pnpm start`.
 
 The anon key is safe to use in the client when RLS is enabled. Never place the
 Supabase service-role key or an OpenAI API key in an `EXPO_PUBLIC_*` variable.

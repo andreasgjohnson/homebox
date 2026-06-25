@@ -11,6 +11,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   buildArchiveMoments,
   fromSlug,
@@ -78,7 +79,7 @@ export default function ThemeScreen() {
             <Text style={styles.backChevron}>‹</Text>
             <Text style={styles.backText}>Memories</Text>
           </Pressable>
-          <Text style={styles.wordmark}>STOREYBOX</Text>
+          <StoreyboxWordmark />
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 

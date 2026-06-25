@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { MenuButton, StoreyboxDrawer } from '@/components/DaybookChrome';
+import { MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   type ArchiveAggregate,
   type ArchiveLens,
@@ -24,6 +24,7 @@ import {
   toSlug,
 } from '@/lib/archiveView';
 import { listMemories, type MemoryListItem } from '@/lib/memories';
+import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
@@ -34,6 +35,7 @@ export default function MemoriesScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -62,6 +64,7 @@ export default function MemoriesScreen() {
     }
 
     setProfileName(getProfileDisplayName(profile ?? null));
+    setProfileAvatarUrl(await getProfilePhotoPreviewUrl(profile?.avatar_url));
     setIsLoading(false);
   }, [session?.user.id]);
 
@@ -108,7 +111,7 @@ export default function MemoriesScreen() {
         <ScrollView contentContainerStyle={styles.main}>
           <View style={styles.topRow}>
             <MenuButton onPress={() => setIsDrawerOpen(true)} />
-            <Text style={styles.wordmark}>STOREYBOX</Text>
+            <StoreyboxWordmark />
             <Text style={styles.privateLabel}>PRIVATE</Text>
           </View>
 
@@ -152,6 +155,7 @@ export default function MemoriesScreen() {
         onNavigate={navigate}
         onSignOut={() => void signOut()}
         returningThemes={themes.slice(0, 4).map((theme) => theme.name)}
+        avatarUrl={profileAvatarUrl}
         userInitial={firstName.slice(0, 1).toUpperCase()}
         userName={profileName || session?.user.email}
       />

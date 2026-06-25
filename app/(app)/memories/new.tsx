@@ -23,6 +23,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import { getMemoryAudioPath, removeMemoryAudio, uploadMemoryAudio } from '@/lib/audioStorage';
 import { createRecordedMemory, deleteMemory, updateMemoryAudioPath } from '@/lib/memories';
 import { processMemory } from '@/lib/processMemory';
@@ -239,7 +240,7 @@ export default function NewMemoryScreen() {
             <Text style={styles.cancelChevron}>‹</Text>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
-          <Text style={styles.wordmark}>STOREYBOX</Text>
+          <StoreyboxWordmark />
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 

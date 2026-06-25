@@ -21,6 +21,7 @@ import {
   toSlug,
 } from '@/lib/archiveView';
 import { listMemories, type MemoryListItem } from '@/lib/memories';
+import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
@@ -42,6 +43,7 @@ export default function HomeScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [isLoadingMemories, setIsLoadingMemories] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -67,6 +69,7 @@ export default function HomeScreen() {
     }
 
     setProfileName(getProfileDisplayName(profile ?? null));
+    setProfileAvatarUrl(await getProfilePhotoPreviewUrl(profile?.avatar_url));
     setIsLoadingMemories(false);
   }, [session?.user.id]);
 
@@ -95,6 +98,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <DaybookChrome
+        avatarUrl={profileAvatarUrl}
         isSigningOut={isSigningOut}
         memoryCount={memories.length}
         onSignOut={() => void signOut()}
