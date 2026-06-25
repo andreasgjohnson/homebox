@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { StoreyHero } from '@/components/StoreyHero';
 
 export default function AuthIndex() {
-  return <Redirect href="/login" />;
+  return <StoreyHero />;
 }
