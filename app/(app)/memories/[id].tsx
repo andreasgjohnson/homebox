@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -41,6 +42,8 @@ export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const [memory, setMemory] = useState<Memory | null>(null);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [playbackErrorMessage, setPlaybackErrorMessage] = useState<string | null>(null);
@@ -198,7 +201,7 @@ export default function MemoryDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
         <Pressable onPress={() => router.replace('/memories' as Href)} style={styles.backLink}>
           <Text style={styles.backChevron}>‹</Text>
           <Text style={styles.backText}>Memories</Text>
@@ -216,7 +219,10 @@ export default function MemoryDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}
+        keyboardShouldPersistTaps="handled"
+      >
         {isLoading ? (
           <View style={styles.feedback}>
             <ActivityIndicator color={colors.ink} />
@@ -265,7 +271,7 @@ export default function MemoryDetailScreen() {
               )}
             </View>
 
-            <View style={styles.audioCard}>
+            <View style={[styles.audioCard, isPhone && styles.audioCardPhone]}>
               <Pressable
                 disabled={!canPlay}
                 onPress={() => void togglePlayback()}
@@ -273,7 +279,7 @@ export default function MemoryDetailScreen() {
               >
                 <Text style={styles.playIcon}>{playerStatus.playing ? 'Ⅱ' : '▶'}</Text>
               </Pressable>
-              <View style={styles.waveform}>
+              <View style={[styles.waveform, isPhone && styles.waveformPhone]}>
                 {waveBars.map((height, index) => {
                   const isPin = pinIndexes.has(index);
                   const pin = markedMoments[index % Math.max(markedMoments.length, 1)];
@@ -466,6 +472,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 18,
   },
+  topBarPhone: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
   backLink: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -516,6 +526,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     paddingHorizontal: 36,
     width: '100%',
+  },
+  containerPhone: {
+    maxWidth: undefined,
+    paddingBottom: 42,
+    paddingHorizontal: 24,
   },
   header: {
     alignItems: 'center',
@@ -582,6 +597,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 20,
   },
+  audioCardPhone: {
+    gap: 13,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
   playButton: {
     alignItems: 'center',
     backgroundColor: colors.ink,
@@ -601,6 +621,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 2,
     height: 44,
+  },
+  waveformPhone: {
+    height: 40,
   },
   waveBar: {
     borderRadius: 3,

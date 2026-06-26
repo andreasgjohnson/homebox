@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -34,6 +35,8 @@ export default function ThemeScreen() {
   const { name } = useLocalSearchParams<{ name?: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,8 +76,8 @@ export default function ThemeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.topBar}>
+      <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
+        <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
           <Pressable onPress={() => router.push('/memories?lens=themes' as Href)} style={styles.backLink}>
             <Text style={styles.backChevron}>‹</Text>
             <Text style={styles.backText}>Memories</Text>
@@ -83,10 +86,10 @@ export default function ThemeScreen() {
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 
-        <View style={styles.header}>
-          <View style={[styles.glow, glowStyle]} />
+        <View style={[styles.header, isPhone && styles.headerPhone]}>
+          <View style={[styles.glow, isPhone && styles.glowPhone, glowStyle]} />
           <Text style={styles.eyebrow}>THEME · {theme?.count ?? visibleMoments.length} MOMENTS · RISING</Text>
-          <Text style={styles.title}>{themeName}</Text>
+          <Text style={[styles.title, isPhone && styles.titlePhone]}>{themeName}</Text>
         </View>
 
         {isLoading ? (
@@ -117,10 +120,12 @@ export default function ThemeScreen() {
 }
 
 function TrendPanel({ label }: { label: string }) {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const bars = [12, 18, 18, 29, 40, 52];
 
   return (
-    <View style={[styles.trendPanel, washStyle]}>
+    <View style={[styles.trendPanel, isPhone && styles.trendPanelPhone, washStyle]}>
       <View style={styles.trendHead}>
         <Text style={styles.trendLabel}>{label}</Text>
         <Text style={styles.trendRange}>Past 6 months</Text>
@@ -207,6 +212,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     width: '100%',
   },
+  containerPhone: {
+    maxWidth: undefined,
+    paddingBottom: 44,
+    paddingHorizontal: 24,
+  },
   topBar: {
     alignItems: 'center',
     borderBottomColor: colors.border,
@@ -216,6 +226,11 @@ const styles = StyleSheet.create({
     marginHorizontal: -40,
     paddingHorizontal: 40,
     paddingVertical: 22,
+  },
+  topBarPhone: {
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
   },
   backLink: {
     alignItems: 'center',
@@ -252,6 +267,9 @@ const styles = StyleSheet.create({
     marginTop: 46,
     position: 'relative',
   },
+  headerPhone: {
+    marginTop: 34,
+  },
   glow: {
     height: 220,
     left: '50%',
@@ -260,6 +278,11 @@ const styles = StyleSheet.create({
     top: '62%',
     transform: [{ translateX: -220 }, { translateY: -110 }],
     width: 440,
+  },
+  glowPhone: {
+    height: 200,
+    transform: [{ translateX: -180 }, { translateY: -100 }],
+    width: 360,
   },
   eyebrow: {
     color: colors.blue,
@@ -278,6 +301,10 @@ const styles = StyleSheet.create({
     lineHeight: 61,
     position: 'relative',
   },
+  titlePhone: {
+    fontSize: 46,
+    lineHeight: 49,
+  },
   trendPanel: {
     backgroundColor: '#EAF1F7',
     borderColor: '#DDE8F0',
@@ -286,6 +313,10 @@ const styles = StyleSheet.create({
     marginTop: 40,
     paddingHorizontal: 30,
     paddingVertical: 26,
+  },
+  trendPanelPhone: {
+    paddingHorizontal: 22,
+    paddingVertical: 22,
   },
   trendHead: {
     alignItems: 'baseline',

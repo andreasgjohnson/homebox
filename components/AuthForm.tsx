@@ -147,8 +147,8 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
               <Text style={styles.eyebrow}>BEGIN</Text>
               <Text style={styles.newTitle}>Say hello,{'\n'}and we'll begin.</Text>
               <Text style={styles.newBody}>
-                No password to invent. Say hello to teach Storeybox your voice — you'll add an
-                email so your box is always yours to find.
+                No password to invent. Say hello to begin — you'll add an email so your box is
+                always yours to find.
               </Text>
 
               <SpeakToEnter

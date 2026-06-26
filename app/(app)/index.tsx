@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -42,6 +43,8 @@ const analyticsWashStyle = {
 export default function HomeScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -106,25 +109,31 @@ export default function HomeScreen() {
         userInitial={firstName.slice(0, 1).toUpperCase()}
         userName={profileName || session?.user.email}
       >
-        <ScrollView contentContainerStyle={styles.container}>
-          <View style={styles.hero}>
+        <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
+          <View style={[styles.hero, isPhone && styles.heroPhone]}>
             <Text style={styles.greeting}>Good {getDayPart()}, {firstName}.</Text>
             <View style={styles.insightWrap}>
-              <View style={[styles.heroGlow, glowStyle]} />
-              <Text style={styles.insight}>{insight}</Text>
+              <View style={[styles.heroGlow, isPhone && styles.heroGlowPhone, glowStyle]} />
+              <Text style={[styles.insight, isPhone && styles.insightPhone]}>{insight}</Text>
             </View>
-            <Text style={styles.basis}>A reflection drawn from your recent recordings.</Text>
+            <Text style={[styles.basis, isPhone && styles.basisPhone]}>
+              A reflection drawn from your recent recordings.
+            </Text>
           </View>
 
-          <View style={styles.recordWrap}>
+          <View style={[styles.recordWrap, isPhone && styles.recordWrapPhone]}>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/memories/new' as Href)}
-              style={({ pressed }) => [styles.recordTarget, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.recordTarget,
+                isPhone && styles.recordTargetPhone,
+                pressed && styles.pressed,
+              ]}
             >
-              <View style={[styles.recordGlow, recordGlowStyle]} />
-              <View style={styles.recordRing} />
-              <View style={styles.recordCore}>
+              <View style={[styles.recordGlow, isPhone && styles.recordGlowPhone, recordGlowStyle]} />
+              <View style={[styles.recordRing, isPhone && styles.recordRingPhone]} />
+              <View style={[styles.recordCore, isPhone && styles.recordCorePhone]}>
                 <MicIcon />
               </View>
             </Pressable>
@@ -182,12 +191,12 @@ export default function HomeScreen() {
             <Text style={styles.arrow}>›</Text>
           </Pressable>
 
-          <View style={[styles.analyticsBand, analyticsWashStyle]}>
+          <View style={[styles.analyticsBand, isPhone && styles.analyticsBandPhone, analyticsWashStyle]}>
             <Text style={styles.analyticsLabel}>RECENT INSIGHTS · LAST 7 DAYS</Text>
-            <View style={styles.analyticsGrid}>
+            <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
               <Pressable
                 onPress={() => router.push(`/themes/${toSlug(topTheme?.name ?? 'Home')}` as Href)}
-                style={styles.analyticsColumn}
+                style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}
               >
                 <Text style={styles.analyticsKicker}>TOP THEME</Text>
                 <Text style={styles.analyticsValue}>{topTheme?.name ?? 'Home'}</Text>
@@ -198,7 +207,7 @@ export default function HomeScreen() {
                   <View style={[styles.freqBar, { backgroundColor: '#CDDDEA', flex: 5 }]} />
                 </View>
               </Pressable>
-              <View style={styles.analyticsColumn}>
+              <View style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}>
                 <Text style={styles.analyticsKicker}>TEXTURE</Text>
                 <Text style={styles.analyticsValue}>{topTexture}</Text>
                 <Text style={styles.analyticsMeta}>Calmer than last week</Text>
@@ -210,7 +219,7 @@ export default function HomeScreen() {
               </View>
               <Pressable
                 onPress={() => router.push(`/people/${toSlug(topPerson?.name ?? 'Dad')}` as Href)}
-                style={styles.analyticsColumn}
+                style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}
               >
                 <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
                 <Text style={styles.analyticsValue}>{topPerson?.name ?? 'Dad'}</Text>
@@ -272,10 +281,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     width: '100%',
   },
+  containerPhone: {
+    maxWidth: undefined,
+    paddingBottom: 150,
+    paddingHorizontal: 24,
+  },
   hero: {
     alignItems: 'center',
     marginTop: 46,
     textAlign: 'center',
+  },
+  heroPhone: {
+    marginTop: 34,
   },
   greeting: {
     color: '#8A939E',
@@ -300,6 +317,11 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -260 }, { translateY: -150 }],
     width: 520,
   },
+  heroGlowPhone: {
+    height: 230,
+    transform: [{ translateX: -190 }, { translateY: -115 }],
+    width: 380,
+  },
   insight: {
     color: colors.ink,
     fontFamily: fonts.serif,
@@ -310,6 +332,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     textAlign: 'center',
   },
+  insightPhone: {
+    fontSize: 34,
+    letterSpacing: 0,
+    lineHeight: 38.08,
+  },
   basis: {
     color: colors.muted,
     fontFamily: fonts.sans,
@@ -319,14 +346,26 @@ const styles = StyleSheet.create({
     marginTop: 22,
     textAlign: 'center',
   },
+  basisPhone: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 18,
+  },
   recordWrap: {
     alignItems: 'center',
     marginTop: 48,
+  },
+  recordWrapPhone: {
+    marginTop: 38,
   },
   recordTarget: {
     height: 148,
     position: 'relative',
     width: 148,
+  },
+  recordTargetPhone: {
+    height: 116,
+    width: 116,
   },
   recordGlow: {
     borderRadius: 88,
@@ -335,6 +374,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -14,
     top: -14,
+  },
+  recordGlowPhone: {
+    borderRadius: 72,
+    bottom: -12,
+    left: -12,
+    right: -12,
+    top: -12,
   },
   recordRing: {
     borderColor: '#CDD9E5',
@@ -345,6 +391,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  recordRingPhone: {
+    borderRadius: 58,
   },
   recordCore: {
     alignItems: 'center',
@@ -357,6 +406,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 14,
     top: 14,
+  },
+  recordCorePhone: {
+    borderRadius: 44,
+    bottom: 12,
+    left: 12,
+    right: 12,
+    top: 12,
   },
   micWrap: {
     alignItems: 'center',
@@ -515,6 +571,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingVertical: 30,
   },
+  analyticsBandPhone: {
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    paddingVertical: 26,
+  },
   analyticsLabel: {
     color: colors.blue,
     fontFamily: fonts.mono,
@@ -528,9 +589,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 26,
   },
+  analyticsGridPhone: {
+    flexDirection: 'column',
+    gap: 18,
+  },
   analyticsColumn: {
     flex: 1,
     minWidth: 0,
+  },
+  analyticsColumnPhone: {
+    borderBottomColor: '#DDE8F0',
+    borderBottomWidth: 1,
+    paddingBottom: 18,
   },
   analyticsKicker: {
     color: '#7E94A8',

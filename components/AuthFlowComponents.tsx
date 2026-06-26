@@ -14,17 +14,15 @@ import { colors, fonts } from '@/lib/theme';
 export type AuthMode = 'new' | 'back';
 
 const recordHazeStyle = {
-  animation: 'haze 7s ease-in-out infinite',
   backgroundImage: 'radial-gradient(circle,#9fc0de 0%,#bcd2e6 38%,transparent 70%)',
 } as unknown as ViewStyle;
 
 const glowStyle = {
-  animation: 'breatheSoft 9s ease-in-out infinite',
   backgroundImage: 'radial-gradient(ellipse,#c7dcec,transparent 68%)',
 } as unknown as ViewStyle;
 
 const caretStyle = {
-  animation: 'caret 1.1s step-end infinite',
+  opacity: 0.82,
 } as unknown as ViewStyle;
 
 export function StoreyboxAuthWordmark() {
@@ -165,33 +163,10 @@ export function SpeakToEnter({
   );
 }
 
-export function OnboardingVoiceRecorder({
-  isRecording,
-  label,
-  onToggleRecording,
-}: {
-  isRecording: boolean;
-  label: string;
-  onToggleRecording: () => void;
-}) {
-  return (
-    <View style={styles.onboardingRecordRow}>
-      <Pressable onPress={onToggleRecording} style={styles.onboardingRecordPressable}>
-        <View style={styles.onboardingRecordCore}>
-          <View style={isRecording ? styles.recordingSquare : styles.recordingDot} />
-        </View>
-        <Text style={[styles.onboardingRecordLabel, isRecording && styles.onboardingRecordLabelLive]}>
-          {label}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export function StepProgress({ step }: { step: number }) {
   return (
     <View style={styles.progress}>
-      {[1, 2, 3].map((item) => (
+      {[1, 2].map((item) => (
         <View
           key={item}
           style={[styles.progressSegment, { backgroundColor: step >= item ? colors.blue : '#e2dccf' }]}
@@ -582,48 +557,6 @@ const styles = StyleSheet.create({
   waveBar: {
     borderRadius: 3,
     width: 3,
-  },
-  onboardingRecordRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 14,
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  onboardingRecordPressable: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 11,
-  },
-  onboardingRecordCore: {
-    alignItems: 'center',
-    backgroundColor: colors.ink,
-    borderRadius: 26,
-    boxShadow: '0 8px 20px rgba(30,38,48,.22)',
-    height: 52,
-    justifyContent: 'center',
-    width: 52,
-  } as ViewStyle,
-  recordingDot: {
-    backgroundColor: '#c0883f',
-    borderRadius: 7,
-    height: 14,
-    width: 14,
-  },
-  recordingSquare: {
-    backgroundColor: '#c0883f',
-    borderRadius: 3,
-    height: 15,
-    width: 15,
-  },
-  onboardingRecordLabel: {
-    color: '#4a525d',
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  onboardingRecordLabelLive: {
-    color: '#a06c2f',
   },
   progress: {
     flexDirection: 'row',

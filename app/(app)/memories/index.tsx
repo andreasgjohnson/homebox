@@ -7,10 +7,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
-import { MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
+import { BottomTabBar, MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   type ArchiveAggregate,
   type ArchiveLens,
@@ -34,6 +35,8 @@ export default function MemoriesScreen() {
   const { lens } = useLocalSearchParams<{ lens?: ArchiveLens }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -98,27 +101,29 @@ export default function MemoriesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.screen}>
-        <IndexRail
-          onPersonPress={(name) => router.push(`/people/${toSlug(name)}` as Href)}
-          onThemePress={(name) => router.push(`/themes/${toSlug(name)}` as Href)}
-          onTimePress={() => setLens('time')}
-          people={people}
-          themes={themes}
-          timeItems={timeItems}
-        />
+      <View style={[styles.screen, isPhone && styles.screenPhone]}>
+        {!isPhone ? (
+          <IndexRail
+            onPersonPress={(name) => router.push(`/people/${toSlug(name)}` as Href)}
+            onThemePress={(name) => router.push(`/themes/${toSlug(name)}` as Href)}
+            onTimePress={() => setLens('time')}
+            people={people}
+            themes={themes}
+            timeItems={timeItems}
+          />
+        ) : null}
 
-        <ScrollView contentContainerStyle={styles.main}>
-          <View style={styles.topRow}>
-            <MenuButton onPress={() => setIsDrawerOpen(true)} />
+        <ScrollView contentContainerStyle={[styles.main, isPhone && styles.mainPhone]}>
+          <View style={[styles.topRow, isPhone && styles.topRowPhone]}>
+            {isPhone ? <View style={styles.mobileTopSpacer} /> : <MenuButton onPress={() => setIsDrawerOpen(true)} />}
             <StoreyboxWordmark />
             <Text style={styles.privateLabel}>PRIVATE</Text>
           </View>
 
-          <Text style={styles.title}>Memories</Text>
+          <Text style={[styles.title, isPhone && styles.titlePhone]}>Memories</Text>
           <Text style={styles.countLine}>{memories.length} moments kept, all yours.</Text>
 
-          <LensSwitch activeLens={activeLens} onChange={setLens} />
+          <LensSwitch activeLens={activeLens} isCompact={isPhone} onChange={setLens} />
 
           {isLoading ? (
             <View style={styles.feedback}>
@@ -134,31 +139,35 @@ export default function MemoriesScreen() {
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'time' ? (
-            <TimeLens moments={moments} periods={periods} router={router} />
+            <TimeLens isCompact={isPhone} moments={moments} periods={periods} router={router} />
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'themes' ? (
-            <ThemesLens router={router} themes={themes} />
+            <ThemesLens isCompact={isPhone} router={router} themes={themes} />
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'people' ? (
-            <PeopleLens people={people} router={router} />
+            <PeopleLens isCompact={isPhone} people={people} router={router} />
           ) : null}
         </ScrollView>
       </View>
 
-      <StoreyboxDrawer
-        isOpen={isDrawerOpen}
-        isSigningOut={isSigningOut}
-        memoryCount={memories.length}
-        onClose={() => setIsDrawerOpen(false)}
-        onNavigate={navigate}
-        onSignOut={() => void signOut()}
-        returningThemes={themes.slice(0, 4).map((theme) => theme.name)}
-        avatarUrl={profileAvatarUrl}
-        userInitial={firstName.slice(0, 1).toUpperCase()}
-        userName={profileName || session?.user.email}
-      />
+      {isPhone ? (
+        <BottomTabBar activeTab="memories" />
+      ) : (
+        <StoreyboxDrawer
+          isOpen={isDrawerOpen}
+          isSigningOut={isSigningOut}
+          memoryCount={memories.length}
+          onClose={() => setIsDrawerOpen(false)}
+          onNavigate={navigate}
+          onSignOut={() => void signOut()}
+          returningThemes={themes.slice(0, 4).map((theme) => theme.name)}
+          avatarUrl={profileAvatarUrl}
+          userInitial={firstName.slice(0, 1).toUpperCase()}
+          userName={profileName || session?.user.email}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -228,18 +237,24 @@ function RailEntity({ item, onPress }: { item: ArchiveAggregate; onPress: () => 
 
 function LensSwitch({
   activeLens,
+  isCompact = false,
   onChange,
 }: {
   activeLens: ArchiveLens;
+  isCompact?: boolean;
   onChange: (lens: ArchiveLens) => void;
 }) {
   return (
-    <View style={styles.lensSwitch}>
+    <View style={[styles.lensSwitch, isCompact && styles.lensSwitchPhone]}>
       {(['time', 'themes', 'people'] as ArchiveLens[]).map((lens) => (
         <Pressable
           key={lens}
           onPress={() => onChange(lens)}
-          style={[styles.lensPill, activeLens === lens && styles.lensPillActive]}
+          style={[
+            styles.lensPill,
+            isCompact && styles.lensPillPhone,
+            activeLens === lens && styles.lensPillActive,
+          ]}
         >
           <Text style={[styles.lensText, activeLens === lens && styles.lensTextActive]}>
             {lens.slice(0, 1).toUpperCase() + lens.slice(1)}
@@ -251,10 +266,12 @@ function LensSwitch({
 }
 
 function TimeLens({
+  isCompact = false,
   moments,
   periods,
   router,
 }: {
+  isCompact?: boolean;
   moments: ArchiveMoment[];
   periods: ReturnType<typeof getArchivePeriods>;
   router: ReturnType<typeof useRouter>;
@@ -268,7 +285,7 @@ function TimeLens({
       {periods.map((period) => (
         <View key={`${period.label}-${period.sub}`} style={styles.period}>
           <View style={[styles.periodNode, { backgroundColor: period.color }]} />
-          <View style={styles.periodHead}>
+          <View style={[styles.periodHead, isCompact && styles.periodHeadPhone]}>
             <View style={styles.periodTitleRow}>
               <Text style={styles.periodTitle}>{period.label}</Text>
               <Text style={styles.periodSub}>{period.sub}</Text>
@@ -293,9 +310,11 @@ function TimeLens({
 }
 
 function ThemesLens({
+  isCompact = false,
   router,
   themes,
 }: {
+  isCompact?: boolean;
   router: ReturnType<typeof useRouter>;
   themes: ArchiveAggregate[];
 }) {
@@ -307,7 +326,7 @@ function ThemesLens({
         <Pressable
           key={theme.name}
           onPress={() => router.push(`/themes/${toSlug(theme.name)}` as Href)}
-          style={styles.themeTile}
+          style={[styles.themeTile, isCompact && styles.themeTilePhone]}
         >
           <View style={[styles.themeEdge, { backgroundColor: theme.color }]} />
           <View style={styles.tileHead}>
@@ -322,9 +341,11 @@ function ThemesLens({
 }
 
 function PeopleLens({
+  isCompact = false,
   people,
   router,
 }: {
+  isCompact?: boolean;
   people: ArchiveAggregate[];
   router: ReturnType<typeof useRouter>;
 }) {
@@ -333,14 +354,14 @@ function PeopleLens({
     : [{ color: '#B08F8C', count: 0, initial: 'D', name: 'Dad' }];
 
   return (
-    <View style={styles.peopleGrid}>
+    <View style={[styles.peopleGrid, isCompact && styles.peopleGridPhone]}>
       {items.map((person) => (
         <Pressable
           key={person.name}
           onPress={() => router.push(`/people/${toSlug(person.name)}` as Href)}
-          style={styles.personTile}
+          style={[styles.personTile, isCompact && styles.personTilePhone]}
         >
-          <View style={styles.personAvatar}>
+          <View style={[styles.personAvatar, isCompact && styles.personAvatarPhone]}>
             <Text style={styles.personInitial}>{person.initial ?? person.name.slice(0, 1)}</Text>
           </View>
           <Text style={styles.personName}>{person.name}</Text>
@@ -368,6 +389,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     flexDirection: 'row',
+  },
+  screenPhone: {
+    flexDirection: 'column',
   },
   rail: {
     backgroundColor: colors.rail,
@@ -461,10 +485,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 44,
     paddingTop: 30,
   },
+  mainPhone: {
+    paddingBottom: 150,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
   topRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  topRowPhone: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    marginHorizontal: -24,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
+  },
+  mobileTopSpacer: {
+    width: 44,
   },
   wordmark: {
     color: colors.blue,
@@ -488,6 +527,11 @@ const styles = StyleSheet.create({
     lineHeight: 44,
     marginTop: 26,
   },
+  titlePhone: {
+    fontSize: 34,
+    lineHeight: 36,
+    marginTop: 30,
+  },
   countLine: {
     color: '#8A939E',
     fontFamily: fonts.sans,
@@ -504,10 +548,17 @@ const styles = StyleSheet.create({
     marginTop: 22,
     padding: 4,
   },
+  lensSwitchPhone: {
+    alignSelf: 'stretch',
+  },
   lensPill: {
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 8,
+  },
+  lensPillPhone: {
+    alignItems: 'center',
+    flex: 1,
   },
   lensPillActive: {
     backgroundColor: colors.white,
@@ -546,6 +597,11 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  periodHeadPhone: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+    gap: 8,
   },
   periodTitleRow: {
     alignItems: 'baseline',
@@ -609,6 +665,12 @@ const styles = StyleSheet.create({
     padding: 22,
     position: 'relative',
   },
+  themeTilePhone: {
+    flexBasis: '47%',
+    minWidth: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+  },
   themeEdge: {
     bottom: 0,
     left: 0,
@@ -647,8 +709,15 @@ const styles = StyleSheet.create({
     gap: 30,
     marginTop: 26,
   },
+  peopleGridPhone: {
+    gap: 18,
+    justifyContent: 'space-between',
+  },
   personTile: {
     alignItems: 'center',
+  },
+  personTilePhone: {
+    width: '29%',
   },
   personAvatar: {
     alignItems: 'center',
@@ -659,6 +728,11 @@ const styles = StyleSheet.create({
     height: 72,
     justifyContent: 'center',
     width: 72,
+  },
+  personAvatarPhone: {
+    borderRadius: 37,
+    height: 74,
+    width: 74,
   },
   personInitial: {
     color: colors.blue,

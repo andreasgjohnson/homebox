@@ -13,91 +13,87 @@ import {
 import {
   BackChevron,
   HairlineEmailField,
-  makeWave,
-  OnboardingVoiceRecorder,
   PasskeyToggle,
   PrimaryButton,
   RecapCard,
   SoftGlow,
   StepProgress,
   StoreyboxAuthWordmark,
-  Waveform,
 } from '@/components/AuthFlowComponents';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
   const [step, setStep] = useState(() => (stepParam === '2' ? 2 : 1));
-  const [isRecording, setIsRecording] = useState(false);
-  const [hasRecorded, setHasRecorded] = useState(false);
   const [isPasskeyEnabled, setIsPasskeyEnabled] = useState(true);
   const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const stepTag = step === 1 ? 'YOUR VOICE' : step === 2 ? 'YOUR ACCOUNT' : 'ALL SET';
-
-  async function toggleVoiceRecording() {
-    if (isRecording) {
-      setIsRecording(false);
-      setHasRecorded(true);
-      return;
-    }
-
-    const granted = await requestMicrophonePermission();
-
-    if (!granted) {
-      setMessage('Microphone permission is optional. You can skip this step and continue.');
-      return;
-    }
-
-    setMessage(null);
-    setIsRecording(true);
-  }
+  const stepTag = step === 1 ? 'SO YOU CAN RETURN' : "YOU'RE SET";
 
   function goBack() {
     setMessage(null);
-    setIsRecording(false);
 
     if (step > 1) {
       setStep(step - 1);
       return;
     }
 
-    router.replace('/' as Href);
+    router.replace('/login' as Href);
   }
 
   function skip() {
     setMessage(null);
-    setIsRecording(false);
-    setStep(Math.min(step + 1, 3));
+    setStep(2);
   }
 
-  function next() {
+  async function next() {
     setMessage(null);
-    setIsRecording(false);
 
-    if (step === 2 && !isValidEmail(email.trim())) {
-      setMessage('Add a valid email so your box is always yours to find.');
-      return;
-    }
-
-    if (step < 3) {
-      setStep(step + 1);
+    if (step === 1) {
+      await finishAccountStep();
       return;
     }
 
     router.replace('/' as Href);
+  }
+
+  async function finishAccountStep() {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!isValidEmail(cleanEmail)) {
+      setMessage('Add a valid email so your box is always yours to find.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        emailRedirectTo: getRedirectTo('/'),
+      },
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setStep(2);
   }
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable
-            onPress={goBack}
-            style={[styles.backButton, step === 1 && styles.hiddenBack]}
-          >
+          <Pressable onPress={goBack} style={[styles.backButton, step === 1 && styles.hiddenBack]}>
             <BackChevron />
             <Text style={styles.backText}>Back</Text>
           </Pressable>
@@ -111,47 +107,11 @@ export default function OnboardingScreen() {
         <View style={styles.content}>
           {step === 1 ? (
             <View>
-              <Text style={styles.eyebrow}>STEP 1 OF 3 · YOUR VOICE</Text>
-              <Text style={styles.title}>Read this once, and Storeybox learns your voice.</Text>
-              <Text style={styles.body}>
-                A short sample teaches Storeybox to recognise{' '}
-                <Text style={styles.bodyItalic}>you</Text> — never to log you in. Skip it and the
-                app still works; it just sounds a little more generic.
-              </Text>
-
-              <View style={styles.passageCard}>
-                <Text style={styles.passageText}>
-                  “The things I want to keep aren't loud. They're a quiet kitchen, a long drive,
-                  the way someone said my name.”
-                </Text>
-              </View>
-
-              <View style={styles.voiceSample}>
-                <Waveform bars={makeWave(56, 21, 34)} color="#a8bccd" height={42} />
-                <OnboardingVoiceRecorder
-                  isRecording={isRecording}
-                  label={isRecording ? 'Recording… tap to stop' : hasRecorded ? 'Read again' : 'Read aloud'}
-                  onToggleRecording={() => void toggleVoiceRecording()}
-                />
-              </View>
-
-              <View style={styles.benefits}>
-                <Benefit color="#6b8198">Knows it's you when other voices share a recording.</Benefit>
-                <Benefit color="#b08f8c">Writes summaries in your cadence — not a template.</Benefit>
-                <Benefit color="#b88a4e">Recognises the people you mention by name.</Benefit>
-              </View>
-
-              <Text style={styles.consent}>STORED PRIVATELY ON YOUR DEVICE · YOURS TO DELETE ANYTIME</Text>
-            </View>
-          ) : null}
-
-          {step === 2 ? (
-            <View>
-              <Text style={styles.eyebrow}>STEP 2 OF 3 · SO YOU CAN RETURN</Text>
+              <Text style={styles.eyebrow}>STEP 1 OF 2 · SO YOU CAN RETURN</Text>
               <Text style={styles.title}>Where should we keep your box?</Text>
               <Text style={styles.body}>
-                This email is how you sign back in — the one thing that's truly your key. We'll
-                only ever use it to send you a private link.
+                This email is how you sign back in — the one thing that's truly your key. Once you
+                verify it, your archive is always yours to find.
               </Text>
 
               <View style={styles.emailBlock}>
@@ -184,19 +144,16 @@ export default function OnboardingScreen() {
             </View>
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <View style={styles.confirm}>
               <SoftGlow style={styles.confirmGlow} />
-              <Text style={styles.eyebrow}>STEP 3 OF 3 · YOU'RE SET</Text>
+              <Text style={styles.eyebrow}>STEP 2 OF 2 · YOU'RE SET</Text>
               <Text style={styles.confirmTitle}>Your box is ready.</Text>
-              <Text style={styles.confirmBody}>Three quiet things, doing three different jobs.</Text>
+              <Text style={styles.confirmBody}>Two quiet things, doing two different jobs.</Text>
 
               <View style={styles.recapStack}>
                 <RecapCard badge="✓" title={`Email — ${email.trim() || 'add later'}`}>
                   How you sign back in, anywhere.
-                </RecapCard>
-                <RecapCard badge="✓" title={hasRecorded ? 'Voice profile — learning' : 'Voice profile — skipped'}>
-                  Helps Storeybox sound like you. Not a login.
                 </RecapCard>
                 <RecapCard
                   badge={isPasskeyEnabled ? '✓' : '—'}
@@ -218,40 +175,27 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable disabled={step === 3} onPress={skip} style={step === 3 && styles.hiddenBack}>
+        <Pressable disabled={step === 2 || isSubmitting} onPress={skip} style={step === 2 && styles.hiddenBack}>
           <Text style={styles.skipText}>Skip for now</Text>
         </Pressable>
-        <PrimaryButton onPress={next}>{step === 3 ? 'Enter Storeybox' : 'Continue'}</PrimaryButton>
+        <PrimaryButton isLoading={isSubmitting} onPress={() => void next()}>
+          {step === 2 ? 'Enter Storeybox' : 'Continue'}
+        </PrimaryButton>
       </View>
     </View>
   );
 }
 
-function Benefit({ children, color }: { children: string; color: string }) {
-  return (
-    <View style={styles.benefit}>
-      <View style={[styles.benefitDot, { backgroundColor: color }]} />
-      <Text style={styles.benefitText}>{children}</Text>
-    </View>
-  );
-}
-
-async function requestMicrophonePermission() {
-  if (Platform.OS !== 'web' || typeof navigator === 'undefined') {
-    return true;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop());
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getRedirectTo(path: string) {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return `${window.location.origin}${path}`;
 }
 
 const styles = StyleSheet.create({
@@ -295,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 11,
+    lineHeight: 14,
     minWidth: 84,
     textAlign: 'right',
   },
@@ -316,15 +260,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 2.2,
-    lineHeight: 11,
+    lineHeight: 15,
   },
   title: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 35,
+    fontSize: 38,
     fontWeight: '300',
-    letterSpacing: -0.35,
-    lineHeight: 40.6,
+    letterSpacing: 0,
+    lineHeight: 42.6,
     marginTop: 16,
   },
   body: {
@@ -334,64 +278,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 23.25,
     marginTop: 14,
-  },
-  bodyItalic: {
-    fontFamily: fonts.serif,
-    fontStyle: 'italic',
-  },
-  passageCard: {
-    backgroundColor: '#eaf1f7',
-    backgroundImage: 'linear-gradient(180deg,#eaf1f7,#eef3f7)',
-    borderColor: '#dde8f0',
-    borderRadius: 16,
-    borderWidth: 1,
-    marginTop: 26,
-    paddingHorizontal: 30,
-    paddingVertical: 26,
-  } as ViewStyle,
-  passageText: {
-    color: '#3a4a58',
-    fontFamily: fonts.serif,
-    fontSize: 22,
-    fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 34.1,
-  },
-  voiceSample: {
-    alignItems: 'center',
-    marginTop: 26,
-  },
-  benefits: {
-    gap: 12,
-    marginTop: 30,
-  },
-  benefit: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  benefitDot: {
-    borderRadius: 3.5,
-    height: 7,
-    marginTop: 7,
-    width: 7,
-  },
-  benefitText: {
-    color: '#33302a',
-    flex: 1,
-    fontFamily: fonts.serif,
-    fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 21.75,
-  },
-  consent: {
-    color: '#b0a894',
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    fontWeight: '400',
-    letterSpacing: 0.66,
-    lineHeight: 11,
-    marginTop: 24,
   },
   emailBlock: {
     marginTop: 30,
@@ -472,7 +358,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: 40,
     fontWeight: '300',
-    letterSpacing: -0.4,
+    letterSpacing: 0,
     lineHeight: 44.8,
     marginTop: 16,
     position: 'relative',
@@ -499,7 +385,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
     letterSpacing: 0.78,
-    lineHeight: 13,
+    lineHeight: 17,
     marginTop: 30,
     position: 'relative',
     textAlign: 'center',
