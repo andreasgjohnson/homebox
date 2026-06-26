@@ -15,28 +15,15 @@ import { makeWave, Waveform } from '@/components/AuthFlowComponents';
 import { colors, fonts } from '@/lib/theme';
 
 type HeroPhase = 'read' | 'reading' | 'transition' | 'greet';
-type SpeechRecognitionLike = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onend: (() => void) | null;
-  onerror: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-type SpeechRecognitionEventLike = {
-  resultIndex: number;
-  results: ArrayLike<ArrayLike<{ transcript: string }>>;
-};
+type GreetStatus = 'idle' | 'recording' | 'saving' | 'cached';
 
 const passage =
   'We die containing a richness of lovers and tribes, tastes we have swallowed, bodies we have plunged into and swum up as if rivers of wisdom, characters we have climbed into as if trees, fears we have hidden in as if caves. We live to burn, burn, burn like fabulous yellow roman candles exploding like spiders across the stars.';
 
 const passageWords = passage.split(' ');
 const highlightIntervalMs = 300;
-const recognitionFallbackDelayMs = 2400;
 const transitionDelayMs = 4200;
+const greetingCacheKey = 'storeybox:greeting-voice-sample';
 
 export function StoreyHero() {
   const router = useRouter();
@@ -44,19 +31,15 @@ export function StoreyHero() {
   const isCompact = width < 860;
   const [phase, setPhase] = useState<HeroPhase>('read');
   const [highlightedWords, setHighlightedWords] = useState(0);
-  const [readMessage, setReadMessage] = useState<string | null>(null);
-  const [isWaitingForAudio, setIsWaitingForAudio] = useState(false);
-  const [hasAccessibilityFallback, setHasAccessibilityFallback] = useState(false);
-  const [isGreetRecording, setIsGreetRecording] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserFrameRef = useRef<number | null>(null);
-  const fallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [greetStatus, setGreetStatus] = useState<GreetStatus>('idle');
+  const [greetMessage, setGreetMessage] = useState<string | null>(null);
   const highlightIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const highlightedWordsRef = useRef(0);
-  const phaseRef = useRef<HeroPhase>('read');
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const greetStreamRef = useRef<MediaStream | null>(null);
+  const greetRecorderRef = useRef<MediaRecorder | null>(null);
+  const greetChunksRef = useRef<Blob[]>([]);
+  const greetStopResolveRef = useRef<((cached: boolean) => void) | null>(null);
+  const greetStopPromiseRef = useRef<Promise<boolean> | null>(null);
 
   const stageStyle = useMemo(
     () => [styles.stage, phase === 'greet' && styles.stageDawn],
@@ -65,26 +48,15 @@ export function StoreyHero() {
 
   useEffect(() => {
     return () => {
-      stopReadingCapture();
+      stopReadingAnimation();
+      stopGreetCapture();
       clearTransitionTimeout();
     };
   }, []);
 
-  useEffect(() => {
-    highlightedWordsRef.current = highlightedWords;
-  }, [highlightedWords]);
-
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
-
   async function pressRead() {
     if (phase === 'reading') {
-      if (highlightedWords > 3) {
-        startTransition();
-      } else {
-        setReadMessage('Keep reading aloud for a moment, then tap again when you are done.');
-      }
+      startTransition();
       return;
     }
 
@@ -92,132 +64,12 @@ export function StoreyHero() {
       return;
     }
 
-    setReadMessage(null);
     setHighlightedWords(0);
-    setHasAccessibilityFallback(false);
-    setIsWaitingForAudio(true);
-
-    const stream = await requestMicrophoneStream();
-
-    if (!stream) {
-      setIsWaitingForAudio(false);
-      setHasAccessibilityFallback(true);
-      setReadMessage('Storey needs microphone access to hear the passage. Enable it, or use the accessibility entry below.');
-      return;
-    }
-
-    streamRef.current = stream;
-    waitForAudioInput(stream);
-  }
-
-  function waitForAudioInput(stream: MediaStream) {
-    const AudioContextClass = getAudioContextClass();
-
-    if (!AudioContextClass) {
-      setIsWaitingForAudio(false);
-      setPhase('reading');
-      setReadMessage('Read the passage aloud, then tap when done.');
-      startSpeechRecognitionWithFallback();
-      return;
-    }
-
-    const audioContext = new AudioContextClass();
-    const analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaStreamSource(stream);
-    const data = new Uint8Array(analyser.fftSize);
-    let silentFrames = 0;
-
-    analyser.fftSize = 512;
-    source.connect(analyser);
-    audioContextRef.current = audioContext;
-
-    const inspect = () => {
-      analyser.getByteTimeDomainData(data);
-      const level = getInputLevel(data);
-
-      if (level > 0.045) {
-        setIsWaitingForAudio(false);
-        setPhase('reading');
-        setReadMessage(null);
-        startSpeechRecognitionWithFallback();
-        return;
-      }
-
-      silentFrames += 1;
-
-      if (silentFrames > 160) {
-        setReadMessage('Your microphone is on. Start reading aloud so Storey can hear you.');
-      }
-
-      analyserFrameRef.current = requestAnimationFrame(inspect);
-    };
-
-    inspect();
-  }
-
-  function startSpeechRecognitionWithFallback() {
-    const Recognition = getSpeechRecognitionClass();
-
-    if (!Recognition) {
-      setReadMessage('Speech recognition is not available here, so Storey will follow your reading pace gently.');
-      startTimedHighlight();
-      return;
-    }
-
-    const recognition = new Recognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.onresult = (event) => {
-      clearFallbackTimeout();
-      const transcript = getSpeechTranscript(event);
-      const nextCount = Math.min(countSpokenWords(transcript), passageWords.length);
-
-      setHighlightedWords((current) => Math.max(current, nextCount));
-
-      if (nextCount >= passageWords.length - 4) {
-        startTransition();
-        return;
-      }
-
-      scheduleRecognitionFallback();
-    };
-    recognition.onerror = () => {
-      setReadMessage('It is noisy, so Storey will keep the reading glow moving while you continue.');
-      startTimedHighlight();
-    };
-    recognition.onend = () => {
-      if (phaseRef.current === 'reading' && highlightedWordsRef.current < passageWords.length - 4) {
-        setReadMessage('Storey lost the words for a moment, so the reading glow will keep pace from here.');
-        startTimedHighlight();
-      }
-    };
-
-    recognitionRef.current = recognition;
-
-    try {
-      recognition.start();
-      scheduleRecognitionFallback();
-    } catch {
-      setReadMessage('Speech recognition did not start, so Storey will follow your reading pace gently.');
-      startTimedHighlight();
-    }
-  }
-
-  function scheduleRecognitionFallback() {
-    clearFallbackTimeout();
-    fallbackTimeoutRef.current = setTimeout(() => {
-      if (phaseRef.current !== 'reading' || highlightedWordsRef.current >= passageWords.length - 4) {
-        return;
-      }
-
-      setReadMessage('It is noisy, so Storey will keep the reading glow moving while you continue.');
-      startTimedHighlight();
-    }, recognitionFallbackDelayMs);
+    setPhase('reading');
+    startTimedHighlight();
   }
 
   function startTimedHighlight() {
-    clearFallbackTimeout();
     clearHighlightInterval();
     highlightIntervalRef.current = setInterval(() => {
       setHighlightedWords((current) => {
@@ -238,7 +90,7 @@ export function StoreyHero() {
       return;
     }
 
-    stopReadingCapture();
+    stopReadingAnimation();
     setPhase('transition');
     setHighlightedWords(passageWords.length);
     clearTransitionTimeout();
@@ -248,53 +100,142 @@ export function StoreyHero() {
   }
 
   async function pressGreet() {
-    if (isGreetRecording) {
-      setIsGreetRecording(false);
+    if (greetStatus === 'recording') {
+      await stopGreetRecording();
       return;
     }
+
+    if (greetStatus === 'saving') {
+      return;
+    }
+
+    await startGreetRecording();
+  }
+
+  async function startGreetRecording() {
+    setGreetMessage(null);
+    setGreetStatus('idle');
+    stopGreetCapture();
 
     const stream = await requestMicrophoneStream();
 
     if (!stream) {
-      setReadMessage('Microphone access is optional here. You can use email to continue.');
+      setGreetMessage('Microphone access is optional. You can continue with email instead.');
       return;
     }
 
-    stream.getTracks().forEach((track) => track.stop());
-    setIsGreetRecording(true);
+    if (typeof MediaRecorder === 'undefined') {
+      stream.getTracks().forEach((track) => track.stop());
+      setGreetMessage('This browser cannot record here. You can continue with email instead.');
+      return;
+    }
+
+    try {
+      const mimeType = getSupportedGreetingMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+
+      greetStreamRef.current = stream;
+      greetRecorderRef.current = recorder;
+      greetChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          greetChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        setGreetMessage('Something interrupted the recording. Try once more, or continue with email.');
+        setGreetStatus('idle');
+        resolveGreetStop(false);
+        stopGreetCapture();
+      };
+      recorder.onstop = () => {
+        void cacheStoppedGreeting(recorder.mimeType);
+      };
+
+      recorder.start();
+      setGreetStatus('recording');
+    } catch {
+      stream.getTracks().forEach((track) => track.stop());
+      setGreetMessage('This browser could not start recording. You can continue with email instead.');
+      setGreetStatus('idle');
+    }
+  }
+
+  async function stopGreetRecording() {
+    const recorder = greetRecorderRef.current;
+
+    if (!recorder || recorder.state === 'inactive') {
+      return greetStatus === 'cached';
+    }
+
+    if (!greetStopPromiseRef.current) {
+      greetStopPromiseRef.current = new Promise((resolve) => {
+        greetStopResolveRef.current = resolve;
+      });
+    }
+
+    setGreetStatus('saving');
+    recorder.stop();
+    return greetStopPromiseRef.current;
+  }
+
+  async function cacheStoppedGreeting(mimeType: string) {
+    const chunks = greetChunksRef.current;
+    stopGreetStream();
+
+    if (chunks.length === 0) {
+      setGreetMessage('Storey did not catch audio that time. Try once more, or continue with email.');
+      setGreetStatus('idle');
+      resolveGreetStop(false);
+      return;
+    }
+
+    const blob = new Blob(chunks, { type: mimeType || chunks[0]?.type || 'audio/webm' });
+
+    try {
+      await cacheGreetingSample(blob);
+      setGreetMessage('Voice sample cached on this device.');
+      setGreetStatus('cached');
+      resolveGreetStop(true);
+    } catch {
+      setGreetMessage('Voice sample captured for this session, but this browser could not store it.');
+      setGreetStatus('cached');
+      resolveGreetStop(false);
+    } finally {
+      greetChunksRef.current = [];
+      greetRecorderRef.current = null;
+    }
+  }
+
+  async function continueFromGreet() {
+    if (greetStatus === 'recording') {
+      await stopGreetRecording();
+    }
+
+    goToOnboarding(2);
   }
 
   function goToOnboarding(step?: 1 | 2) {
     router.push((step === 2 ? '/onboarding?step=2' : '/onboarding') as Href);
   }
 
-  function stopReadingCapture() {
-    if (analyserFrameRef.current) {
-      cancelAnimationFrame(analyserFrameRef.current);
-      analyserFrameRef.current = null;
-    }
-
-    clearFallbackTimeout();
+  function stopReadingAnimation() {
     clearHighlightInterval();
+  }
 
-    if (recognitionRef.current) {
+  function stopGreetCapture() {
+    const recorder = greetRecorderRef.current;
+
+    if (recorder && recorder.state !== 'inactive') {
       try {
-        recognitionRef.current.stop();
+        recorder.stop();
       } catch {
-        // The browser may already have stopped the recognizer.
+        // The browser may already have stopped the recorder.
       }
-      recognitionRef.current = null;
     }
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
+    stopGreetStream();
   }
 
   function clearTransitionTimeout() {
@@ -311,16 +252,22 @@ export function StoreyHero() {
     }
   }
 
-  function clearFallbackTimeout() {
-    if (fallbackTimeoutRef.current) {
-      clearTimeout(fallbackTimeoutRef.current);
-      fallbackTimeoutRef.current = null;
-    }
+  function stopGreetStream() {
+    greetStreamRef.current?.getTracks().forEach((track) => track.stop());
+    greetStreamRef.current = null;
+  }
+
+  function resolveGreetStop(cached: boolean) {
+    greetStopResolveRef.current?.(cached);
+    greetStopResolveRef.current = null;
+    greetStopPromiseRef.current = null;
   }
 
   const showReadLayer = phase === 'read' || phase === 'reading';
   const showGreet = phase === 'greet';
   const showTransition = phase === 'transition';
+  const isGreetRecording = greetStatus === 'recording';
+  const showGreetContinue = greetStatus === 'recording' || greetStatus === 'saving' || greetStatus === 'cached';
 
   return (
     <View style={stageStyle}>
@@ -367,19 +314,11 @@ export function StoreyHero() {
           </Pressable>
           <Text style={phase === 'reading' ? styles.readingLabel : styles.readLabel}>
             {phase === 'reading'
-              ? '● READING · TAP WHEN DONE'
-              : isWaitingForAudio
-                ? 'LISTENING FOR YOUR VOICE'
-                : 'PRESS TO READ ALOUD'}
+              ? '● OPENING · TAP TO SKIP'
+              : 'PRESS TO BEGIN'}
           </Text>
           {phase === 'read' ? (
-            <Text style={styles.readHint}>Reading aloud is how you enter — your microphone will turn on.</Text>
-          ) : null}
-          {readMessage ? <Text style={styles.readMessage}>{readMessage}</Text> : null}
-          {hasAccessibilityFallback ? (
-            <Pressable onPress={startTransition} style={styles.accessibilityLink}>
-              <Text style={styles.accessibilityText}>Use accessibility entry</Text>
-            </Pressable>
+            <Text style={styles.readHint}>A brief opening before Storey says hello.</Text>
           ) : null}
         </View>
       </View>
@@ -430,20 +369,36 @@ export function StoreyHero() {
             </Pressable>
 
             {isGreetRecording ? (
-              <>
-                <View style={styles.greetListening}>
-                  <View style={styles.greetListeningDot} />
-                  <Text style={styles.greetListeningText}>LISTENING</Text>
-                </View>
-                <Waveform bars={makeWave(44, 9, 26)} color="#c4a06a" height={30} />
-                <Pressable onPress={() => goToOnboarding()} style={styles.greetContinue}>
-                  <Text style={styles.greetContinueText}>That's me — continue</Text>
-                  <Text style={styles.greetContinueArrow}>›</Text>
-                </Pressable>
-              </>
+              <Text style={styles.greetHint}>Tap the mic again to stop.</Text>
+            ) : greetStatus === 'saving' ? (
+              <Text style={styles.greetHint}>Caching your hello…</Text>
+            ) : greetStatus === 'cached' ? (
+              <Text style={styles.greetHint}>Your hello is cached.</Text>
             ) : (
               <Text style={styles.greetHint}>Press, and say hello.</Text>
             )}
+
+            {showGreetContinue ? (
+              <>
+                {isGreetRecording ? (
+                  <View style={styles.greetListening}>
+                    <View style={styles.greetListeningDot} />
+                    <Text style={styles.greetListeningText}>RECORDING</Text>
+                  </View>
+                ) : null}
+                <Waveform bars={makeWave(44, 9, 26)} color="#c4a06a" height={30} />
+                <Pressable
+                  disabled={greetStatus === 'saving'}
+                  onPress={() => void continueFromGreet()}
+                  style={[styles.greetContinue, greetStatus === 'saving' && styles.greetContinueDisabled]}
+                >
+                  <Text style={styles.greetContinueText}>Continue</Text>
+                  <Text style={styles.greetContinueArrow}>›</Text>
+                </Pressable>
+              </>
+            ) : null}
+
+            {greetMessage ? <Text style={styles.greetMessage}>{greetMessage}</Text> : null}
 
             <Pressable onPress={() => goToOnboarding(2)} style={styles.emailLink}>
               <Text style={styles.emailLinkText}>
@@ -469,53 +424,48 @@ async function requestMicrophoneStream() {
   }
 }
 
-function getAudioContextClass() {
-  if (typeof window === 'undefined') {
-    return null;
+function getSupportedGreetingMimeType() {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+    return '';
   }
 
-  return window.AudioContext ?? window.webkitAudioContext ?? null;
+  return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((mimeType) =>
+    MediaRecorder.isTypeSupported(mimeType),
+  ) ?? '';
 }
 
-function getSpeechRecognitionClass() {
-  if (typeof window === 'undefined') {
-    return null;
+async function cacheGreetingSample(blob: Blob) {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) {
+    return;
   }
 
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+  const audioDataUrl = await blobToDataUrl(blob);
+  window.localStorage.setItem(
+    greetingCacheKey,
+    JSON.stringify({
+      audioDataUrl,
+      capturedAt: new Date().toISOString(),
+      mimeType: blob.type || 'audio/webm',
+      size: blob.size,
+    }),
+  );
 }
 
-function getSpeechTranscript(event: SpeechRecognitionEventLike) {
-  const pieces: string[] = [];
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
 
-  for (let index = 0; index < event.results.length; index += 1) {
-    const result = event.results[index];
-    const item = result[0];
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read audio sample.'));
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
 
-    if (item?.transcript) {
-      pieces.push(item.transcript);
-    }
-  }
-
-  return pieces.join(' ');
-}
-
-function countSpokenWords(transcript: string) {
-  return transcript
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-}
-
-function getInputLevel(data: Uint8Array) {
-  let total = 0;
-
-  data.forEach((value) => {
-    const centered = (value - 128) / 128;
-    total += centered * centered;
+      reject(new Error('Could not cache audio sample.'));
+    };
+    reader.readAsDataURL(blob);
   });
-
-  return Math.sqrt(total / data.length);
 }
 
 function getEnvelopeStyle(isOpen: boolean, isVisible: boolean) {
@@ -600,14 +550,6 @@ function HeroMicIcon({ color }: { color: string }) {
       <View style={[styles.micStem, { backgroundColor: color }]} />
     </View>
   );
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitAudioContext?: typeof AudioContext;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  }
 }
 
 const styles = StyleSheet.create({
@@ -814,28 +756,6 @@ const styles = StyleSheet.create({
     lineHeight: 19.6,
     maxWidth: 340,
     textAlign: 'center',
-  },
-  readMessage: {
-    color: '#f1d8aa',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-    maxWidth: 360,
-    textAlign: 'center',
-  },
-  accessibilityLink: {
-    borderColor: 'rgba(236,200,143,.45)',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-  },
-  accessibilityText: {
-    color: '#d8c5a4',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '600',
   },
   greetLayer: {
     bottom: 0,
@@ -1073,6 +993,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 26,
   },
+  greetContinueDisabled: {
+    opacity: 0.55,
+  },
   greetContinueText: {
     color: colors.background,
     fontFamily: fonts.sans,
@@ -1084,6 +1007,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 21,
     lineHeight: 20,
+  },
+  greetMessage: {
+    color: '#7e8995',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginTop: 12,
+    maxWidth: 360,
+    position: 'relative',
+    textAlign: 'center',
   },
   emailLink: {
     marginTop: 26,
