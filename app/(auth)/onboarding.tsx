@@ -1,4 +1,4 @@
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Platform,
@@ -15,50 +15,48 @@ import {
   HairlineEmailField,
   PasskeyToggle,
   PrimaryButton,
-  RecapCard,
   SoftGlow,
   StepProgress,
   StoreyboxAuthWordmark,
 } from '@/components/AuthFlowComponents';
+import {
+  clearPendingFirstMemoryDraft,
+  markPendingFirstMemoryOnboardingComplete,
+  markPendingFirstMemoryWaitingForEmail,
+} from '@/lib/onboardingFirstMemory';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
-  const [step, setStep] = useState(() => (stepParam === '2' ? 2 : 1));
   const [isPasskeyEnabled, setIsPasskeyEnabled] = useState(true);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForEmail, setIsWaitingForEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const stepTag = step === 1 ? 'SO YOU CAN RETURN' : "YOU'RE SET";
+  const stepTag = isWaitingForEmail ? 'CHECK YOUR EMAIL' : 'SO YOU CAN RETURN';
 
   function goBack() {
     setMessage(null);
 
-    if (step > 1) {
-      setStep(step - 1);
+    if (isWaitingForEmail) {
+      setIsWaitingForEmail(false);
       return;
     }
 
     router.replace('/login' as Href);
   }
 
-  function skip() {
+  async function skip() {
     setMessage(null);
-    setStep(2);
+    await clearPendingFirstMemoryDraft();
+    router.replace('/login' as Href);
   }
 
   async function next() {
     setMessage(null);
-
-    if (step === 1) {
-      await finishAccountStep();
-      return;
-    }
-
-    router.replace('/' as Href);
+    await finishAccountStep();
   }
 
   async function finishAccountStep() {
@@ -71,6 +69,7 @@ export default function OnboardingScreen() {
 
     setIsSubmitting(true);
     setMessage(null);
+    await markPendingFirstMemoryWaitingForEmail(cleanEmail);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
@@ -86,32 +85,33 @@ export default function OnboardingScreen() {
       return;
     }
 
-    setStep(2);
+    await markPendingFirstMemoryOnboardingComplete(cleanEmail);
+    setIsWaitingForEmail(true);
   }
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={goBack} style={[styles.backButton, step === 1 && styles.hiddenBack]}>
+          <Pressable onPress={goBack} style={[styles.backButton, !isWaitingForEmail && styles.hiddenBack]}>
             <BackChevron />
             <Text style={styles.backText}>Back</Text>
           </Pressable>
           <StoreyboxAuthWordmark />
           <Text style={styles.stepTag}>{stepTag}</Text>
         </View>
-        <StepProgress step={step} />
+        <StepProgress step={isWaitingForEmail ? 2 : 1} />
       </View>
 
       <ScrollView contentContainerStyle={styles.contentScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          {step === 1 ? (
+          {!isWaitingForEmail ? (
             <View>
-              <Text style={styles.eyebrow}>STEP 1 OF 2 · SO YOU CAN RETURN</Text>
+              <Text style={styles.eyebrow}>SO YOU CAN RETURN</Text>
               <Text style={styles.title}>Where should we keep your box?</Text>
               <Text style={styles.body}>
                 This email is how you sign back in — the one thing that's truly your key. Once you
-                verify it, your archive is always yours to find.
+                verify it, your hello can become the first private memory in your archive.
               </Text>
 
               <View style={styles.emailBlock}>
@@ -144,26 +144,21 @@ export default function OnboardingScreen() {
             </View>
           ) : null}
 
-          {step === 2 ? (
+          {isWaitingForEmail ? (
             <View style={styles.confirm}>
               <SoftGlow style={styles.confirmGlow} />
-              <Text style={styles.eyebrow}>STEP 2 OF 2 · YOU'RE SET</Text>
-              <Text style={styles.confirmTitle}>Your box is ready.</Text>
-              <Text style={styles.confirmBody}>Two quiet things, doing two different jobs.</Text>
+              <Text style={styles.eyebrow}>WAITING FOR EMAIL</Text>
+              <Text style={styles.confirmTitle}>Your private link is on its way.</Text>
+              <Text style={styles.confirmBody}>
+                Open the link from this browser. Once Supabase confirms it is you, Storeybox will
+                prepare your archive and bring you in automatically.
+              </Text>
 
-              <View style={styles.recapStack}>
-                <RecapCard badge="✓" title={`Email — ${email.trim() || 'add later'}`}>
-                  How you sign back in, anywhere.
-                </RecapCard>
-                <RecapCard
-                  badge={isPasskeyEnabled ? '✓' : '—'}
-                  badgeMuted={!isPasskeyEnabled}
-                  title={`Face ID unlock — ${isPasskeyEnabled ? 'On' : 'Off'}`}
-                >
-                  {isPasskeyEnabled
-                    ? 'A shortcut on this device only — turn off anytime.'
-                    : "You'll use your email link to return."}
-                </RecapCard>
+              <View style={styles.waitingCard}>
+                <Text style={styles.waitingCardTitle}>{email.trim().toLowerCase()}</Text>
+                <Text style={styles.waitingCardText}>
+                  Nothing has been uploaded yet. Your recording stays local until sign-in succeeds.
+                </Text>
               </View>
 
               <Text style={styles.confirmFoot}>NOTHING IS SHARED · YOUR STORY STAYS YOURS</Text>
@@ -175,11 +170,15 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable disabled={step === 2 || isSubmitting} onPress={skip} style={step === 2 && styles.hiddenBack}>
+        <Pressable
+          disabled={isWaitingForEmail || isSubmitting}
+          onPress={() => void skip()}
+          style={isWaitingForEmail && styles.hiddenBack}
+        >
           <Text style={styles.skipText}>Skip for now</Text>
         </Pressable>
-        <PrimaryButton isLoading={isSubmitting} onPress={() => void next()}>
-          {step === 2 ? 'Enter Storeybox' : 'Continue'}
+        <PrimaryButton disabled={isWaitingForEmail} isLoading={isSubmitting} onPress={() => void next()}>
+          {isWaitingForEmail ? 'Link sent' : 'Send private link'}
         </PrimaryButton>
       </View>
     </View>
@@ -374,10 +373,30 @@ const styles = StyleSheet.create({
     position: 'relative',
     textAlign: 'center',
   },
-  recapStack: {
-    gap: 14,
-    marginTop: 34,
+  waitingCard: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: '#e8e1d2',
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 22,
     width: '100%',
+  },
+  waitingCardTitle: {
+    color: colors.ink,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  waitingCardText: {
+    color: '#8a939e',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 19.5,
+    marginTop: 8,
   },
   confirmFoot: {
     color: '#b0a894',

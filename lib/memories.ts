@@ -24,10 +24,18 @@ const listMemoryColumns = 'id,user_id,title,summary,emotional_tone,tags,recorded
 const detailMemoryColumns =
   'id,user_id,title,summary,transcript,emotional_tone,tags,memorable_quotes,audio_url,recorded_at,created_at';
 
-export async function listMemories(userId: string) {
+type ListMemoriesOptions = {
+  count?: 'exact' | 'planned' | 'estimated';
+  head?: boolean;
+};
+
+export async function listMemories(userId: string, options: ListMemoriesOptions = {}) {
   return supabase
     .from('memories')
-    .select(listMemoryColumns)
+    .select(listMemoryColumns, {
+      count: options.count,
+      head: options.head,
+    })
     .eq('user_id', userId)
     .order('recorded_at', { ascending: false });
 }
@@ -66,10 +74,12 @@ export async function createRecordedMemory(
   audioPath: string | null,
   recordedAt: string,
   title: string,
+  memoryId?: string,
 ) {
   return supabase
     .from('memories')
     .insert({
+      ...(memoryId ? { id: memoryId } : {}),
       user_id: userId,
       title,
       summary: audioPath
