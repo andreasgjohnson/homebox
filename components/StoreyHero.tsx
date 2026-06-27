@@ -324,15 +324,36 @@ export function StoreyHero() {
       >
         <View style={styles.greetSunrise} />
         <View style={[styles.greetGlow, isPhone ? styles.greetGlowPhone : styles.greetGlowDesktop]} />
+        {!isPhone ? (
+          <View style={styles.greetBrandPane}>
+            <View>
+              <Text style={styles.greetBrandWordmark}>STOREYBOX</Text>
+            </View>
+            <View style={styles.greetBrandCopy}>
+              <Text style={styles.greetBrandTitle}>A place for the things worth keeping.</Text>
+              <Text style={styles.greetBrandBody}>
+                Speak a memory. Storeybox keeps the audio, a clean transcript, a gentle summary, and
+                a few quiet signals — then hands it back when you need it.
+              </Text>
+            </View>
+            <View style={styles.greetBrandFoot}>
+              <Text style={styles.greetPromise}>Nothing is shared. Your story stays yours.</Text>
+              <Text style={styles.greetMonoFoot}>
+                PRIVATE BY DEFAULT · ENCRYPTED · DELETABLE ANYTIME
+              </Text>
+            </View>
+          </View>
+        ) : null}
         <View style={[styles.greetContent, isPhone ? styles.greetContentPhone : styles.greetContentDesktop]}>
-          <Text style={styles.greetWordmark}>STOREYBOX</Text>
+          {isPhone ? <Text style={styles.greetWordmark}>STOREYBOX</Text> : null}
           <View style={styles.greetIntro}>
             <Text style={[styles.greetTitle, isPhone ? styles.greetTitlePhone : styles.greetTitleDesktop]}>
               There you are.{'\n'}
               <Text style={styles.greetTitleItalic}>I'm Storey.</Text>
             </Text>
             <Text style={styles.greetBody}>
-              Introduce yourself — your name, where you are, and what kind of day it's been.
+              Introduce yourself — your name, where you are, and what kind of day it's been. However
+              you'd greet a friend you've missed.
             </Text>
           </View>
 
@@ -351,6 +372,7 @@ export function StoreyHero() {
                 <HeroMicIcon color="#cdd9e5" />
               </View>
             </Pressable>
+            <Text style={styles.greetMicLabel}>Press, and say hello.</Text>
             {recordingMessage ? <Text style={styles.recordingMessage}>{recordingMessage}</Text> : null}
             <Pressable
               accessibilityLabel="Use email instead"
@@ -359,9 +381,14 @@ export function StoreyHero() {
               onPress={goToOnboarding}
               style={[styles.emailLink, (isRecording || isSavingRecording) && styles.emailLinkDisabled]}
             >
-              <Text style={styles.emailLinkText}>Use email instead</Text>
+              <Text style={styles.emailLinkText}>
+                <Text style={styles.emailLinkIntro}>Prefer to type? </Text>
+                Use email
+              </Text>
             </Pressable>
-            <Text style={styles.privacyLine}>PRIVATE BY DEFAULT · YOUR STORY STAYS YOURS</Text>
+            {isPhone ? (
+              <Text style={styles.privacyLine}>PRIVATE BY DEFAULT · YOUR STORY STAYS YOURS</Text>
+            ) : null}
           </View>
         </View>
       </View>
@@ -660,7 +687,7 @@ const styles = StyleSheet.create({
   } as unknown as ViewStyle,
   greetLayerDesktop: {
     backgroundImage:
-      'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.28),transparent 50%), linear-gradient(180deg,#f7f3ec 0%,#f3ecdf 100%)',
+      'radial-gradient(ellipse at 74% 0%,rgba(238,206,150,.24),transparent 48%), linear-gradient(180deg,#f8f4ee 0%,#f3ecdf 100%)',
   } as unknown as ViewStyle,
   greetSunrise: {
     backgroundImage: 'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.4),transparent 64%)',
@@ -684,11 +711,72 @@ const styles = StyleSheet.create({
     width: 440,
   },
   greetGlowDesktop: {
-    height: 360,
-    left: '50%',
-    top: '44%',
-    transform: [{ translateX: -240 }, { translateY: -180 }],
-    width: 480,
+    height: 460,
+    left: '75%',
+    top: '52%',
+    transform: [{ translateX: -305 }, { translateY: -230 }],
+    width: 610,
+  },
+  greetBrandPane: {
+    borderRightColor: colors.border,
+    borderRightWidth: 1,
+    bottom: 0,
+    justifyContent: 'space-between',
+    left: 0,
+    paddingHorizontal: 72,
+    paddingVertical: 64,
+    position: 'absolute',
+    top: 0,
+    width: '50%',
+    zIndex: 5,
+  },
+  greetBrandWordmark: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    fontWeight: '400',
+    letterSpacing: 4.3,
+    lineHeight: 12,
+  },
+  greetBrandCopy: {
+    maxWidth: 580,
+  },
+  greetBrandTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 56,
+    fontWeight: '300',
+    letterSpacing: 0,
+    lineHeight: 61,
+  },
+  greetBrandBody: {
+    color: '#5f6a76',
+    fontFamily: fonts.sans,
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 29,
+    marginTop: 42,
+    maxWidth: 540,
+  },
+  greetBrandFoot: {
+    maxWidth: 560,
+  },
+  greetPromise: {
+    color: '#314354',
+    fontFamily: fonts.serif,
+    fontSize: 23,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 30,
+    marginBottom: 26,
+  },
+  greetMonoFoot: {
+    color: '#aaa398',
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 2.65,
+    lineHeight: 14,
   },
   greetContent: {
     alignItems: 'center',
@@ -706,13 +794,14 @@ const styles = StyleSheet.create({
     paddingTop: 86,
   },
   greetContentDesktop: {
+    justifyContent: 'center',
     left: '50%',
-    maxWidth: 430,
-    paddingBottom: 64,
+    maxWidth: 'none',
+    paddingBottom: 86,
     paddingHorizontal: 40,
-    paddingTop: 84,
-    transform: [{ translateX: -215 }],
-    width: 430,
+    paddingTop: 0,
+    width: '50%',
+    zIndex: 6,
   } as unknown as ViewStyle,
   greetWordmark: {
     color: colors.blue,
@@ -724,7 +813,6 @@ const styles = StyleSheet.create({
   },
   greetIntro: {
     alignItems: 'center',
-    marginTop: 36,
   },
   greetTitle: {
     color: colors.ink,
@@ -738,8 +826,8 @@ const styles = StyleSheet.create({
     lineHeight: 42.4,
   },
   greetTitleDesktop: {
-    fontSize: 48,
-    lineHeight: 51,
+    fontSize: 62,
+    lineHeight: 67,
   },
   greetTitleItalic: {
     fontStyle: 'italic',
@@ -748,11 +836,11 @@ const styles = StyleSheet.create({
   greetBody: {
     color: '#5f6a76',
     fontFamily: fonts.sans,
-    fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 24,
-    marginTop: 18,
-    maxWidth: 312,
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 31,
+    marginTop: 50,
+    maxWidth: 510,
     textAlign: 'center',
   },
   greetActions: {
@@ -762,22 +850,22 @@ const styles = StyleSheet.create({
     marginTop: 128,
   },
   greetActionsDesktop: {
-    marginTop: 'auto',
+    marginTop: 62,
   },
   greetMic: {
-    height: 116,
+    height: 154,
     position: 'relative',
-    width: 116,
+    width: 154,
   },
   greetHaze: {
     backgroundImage: 'radial-gradient(circle,#9fc0de 0%,#bcd2e6 38%,transparent 70%)',
-    borderRadius: 76,
-    bottom: -18,
-    left: -18,
+    borderRadius: 101,
+    bottom: -24,
+    left: -24,
     opacity: 0.86,
     position: 'absolute',
-    right: -18,
-    top: -18,
+    right: -24,
+    top: -24,
   } as unknown as ViewStyle,
   greetHazeLive: {
     opacity: 1,
@@ -785,7 +873,7 @@ const styles = StyleSheet.create({
   },
   greetRing: {
     borderColor: '#cdd9e5',
-    borderRadius: 58,
+    borderRadius: 77,
     borderWidth: 1,
     bottom: 0,
     left: 0,
@@ -799,7 +887,7 @@ const styles = StyleSheet.create({
   },
   greetLiveRing: {
     borderColor: 'rgba(143,181,212,.32)',
-    borderRadius: 68,
+    borderRadius: 87,
     borderWidth: 1,
     bottom: -10,
     left: -10,
@@ -810,14 +898,14 @@ const styles = StyleSheet.create({
   greetCore: {
     alignItems: 'center',
     backgroundColor: colors.ink,
-    borderRadius: 45,
-    bottom: 13,
+    borderRadius: 61,
+    bottom: 17,
     boxShadow: '0 12px 30px rgba(30,38,48,.28)',
     justifyContent: 'center',
-    left: 13,
+    left: 17,
     position: 'absolute',
-    right: 13,
-    top: 13,
+    right: 17,
+    top: 17,
   } as unknown as ViewStyle,
   greetCoreLive: {
     backgroundColor: '#263140',
@@ -829,13 +917,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 18,
-    marginTop: 16,
+    marginTop: 14,
     maxWidth: 260,
     minHeight: 18,
     textAlign: 'center',
   },
+  greetMicLabel: {
+    color: '#84909d',
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 22,
+    textAlign: 'center',
+  },
   emailLink: {
-    marginTop: 24,
+    marginTop: 30,
   },
   emailLinkDisabled: {
     opacity: 0.44,
@@ -845,8 +943,12 @@ const styles = StyleSheet.create({
     color: colors.blue,
     fontFamily: fonts.sans,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '700',
     lineHeight: 20,
+  },
+  emailLinkIntro: {
+    color: '#9aa3ad',
+    fontWeight: '600',
   },
   privacyLine: {
     color: '#a6a092',

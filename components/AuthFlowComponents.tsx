@@ -11,8 +11,6 @@ import {
 
 import { colors, fonts } from '@/lib/theme';
 
-export type AuthMode = 'new' | 'back';
-
 const recordHazeStyle = {
   backgroundImage: 'radial-gradient(circle,#9fc0de 0%,#bcd2e6 38%,transparent 70%)',
 } as unknown as ViewStyle;
@@ -27,31 +25,6 @@ const caretStyle = {
 
 export function StoreyboxAuthWordmark() {
   return <Text style={styles.wordmark}>STOREYBOX</Text>;
-}
-
-export function ModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: AuthMode;
-  onChange: (mode: AuthMode) => void;
-}) {
-  return (
-    <View style={styles.modeTrack}>
-      <Pressable
-        onPress={() => onChange('new')}
-        style={[styles.modePill, mode === 'new' && styles.modePillActive]}
-      >
-        <Text style={[styles.modeText, mode === 'new' && styles.modeTextActive]}>New here</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => onChange('back')}
-        style={[styles.modePill, mode === 'back' && styles.modePillActive]}
-      >
-        <Text style={[styles.modeText, mode === 'back' && styles.modeTextActive]}>Welcome back</Text>
-      </Pressable>
-    </View>
-  );
 }
 
 export function HairlineEmailField({
@@ -80,46 +53,6 @@ export function HairlineEmailField({
         />
         <View style={[styles.caret, caretStyle]} />
       </View>
-    </View>
-  );
-}
-
-export function OAuthButton({
-  kind,
-  onPress,
-}: {
-  kind: 'apple' | 'google';
-  onPress: () => void;
-}) {
-  const isApple = kind === 'apple';
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.oauthButton,
-        isApple ? styles.oauthButtonInk : styles.oauthButtonOutline,
-        pressed && styles.pressed,
-      ]}
-    >
-      {isApple ? (
-        <Text style={styles.appleMark}>Apple</Text>
-      ) : (
-        <Text style={styles.googleMark}>G</Text>
-      )}
-      <Text style={[styles.oauthText, isApple ? styles.oauthTextInk : styles.oauthTextOutline]}>
-        Continue with {isApple ? 'Apple' : 'Google'}
-      </Text>
-    </Pressable>
-  );
-}
-
-export function OrDivider() {
-  return (
-    <View style={styles.divider}>
-      <View style={styles.dividerLine} />
-      <Text style={styles.dividerText}>OR</Text>
-      <View style={styles.dividerLine} />
     </View>
   );
 }
@@ -318,29 +251,6 @@ const styles = StyleSheet.create({
     letterSpacing: 3.9,
     lineHeight: 13,
   },
-  modeTrack: {
-    backgroundColor: '#ece6db',
-    borderRadius: 999,
-    flexDirection: 'row',
-    padding: 4,
-  },
-  modePill: {
-    borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 9,
-  },
-  modePillActive: {
-    backgroundColor: colors.white,
-  },
-  modeText: {
-    color: colors.faint,
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modeTextActive: {
-    color: colors.ink,
-  },
   emailLabel: {
     color: '#8a939e',
     fontFamily: fonts.mono,
@@ -371,63 +281,6 @@ const styles = StyleSheet.create({
     height: 22,
     marginLeft: 3,
     width: 2,
-  },
-  oauthButton: {
-    alignItems: 'center',
-    borderRadius: 14,
-    flexDirection: 'row',
-    gap: 10,
-    height: 52,
-    justifyContent: 'center',
-  },
-  oauthButtonInk: {
-    backgroundColor: colors.ink,
-    borderWidth: 0,
-  },
-  oauthButtonOutline: {
-    backgroundColor: colors.surfaceWarm,
-    borderColor: '#d8d0c0',
-    borderWidth: 1,
-  },
-  appleMark: {
-    color: colors.background,
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  googleMark: {
-    color: colors.blue,
-    fontFamily: fonts.sans,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  oauthText: {
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  oauthTextInk: {
-    color: colors.background,
-  },
-  oauthTextOutline: {
-    color: colors.ink,
-  },
-  divider: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 16,
-  },
-  dividerLine: {
-    backgroundColor: '#e2dccf',
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    color: '#a6a092',
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    fontWeight: '400',
-    letterSpacing: 1.76,
   },
   speakWrap: {
     alignItems: 'center',

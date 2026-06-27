@@ -12,11 +12,7 @@ import {
 } from 'react-native';
 
 import {
-  type AuthMode,
   HairlineEmailField,
-  ModeSwitch,
-  OAuthButton,
-  OrDivider,
   PrimaryButton,
   SoftGlow,
   SpeakToEnter,
@@ -33,7 +29,7 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
-  const [authMode, setAuthMode] = useState<AuthMode>(mode === 'login' ? 'back' : 'new');
+  const isLogin = mode === 'login';
   const [isRecording, setIsRecording] = useState(false);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -93,24 +89,6 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
     setMessage('Check your email for a private sign-in link.');
   }
 
-  async function continueWithOAuth(provider: 'apple' | 'google') {
-    if (authMode === 'new') {
-      continueToOnboarding();
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: getRedirectTo('/'),
-      },
-    });
-
-    if (error) {
-      setMessage(error.message);
-    }
-  }
-
   return (
     <View style={stageStyle}>
       {!isCompact ? (
@@ -138,17 +116,12 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.entryInner}>
-          <View style={styles.modeWrap}>
-            <ModeSwitch mode={authMode} onChange={setAuthMode} />
-          </View>
-
-          {authMode === 'new' ? (
+          {!isLogin ? (
             <View style={styles.newPanel}>
-              <Text style={styles.eyebrow}>BEGIN</Text>
-              <Text style={styles.newTitle}>Say hello,{'\n'}and we'll begin.</Text>
+              <Text style={styles.newTitle}>There you are.{'\n'}I'm Storey.</Text>
               <Text style={styles.newBody}>
-                No password to invent. Say hello to begin — you'll add an email so your box is
-                always yours to find.
+                Introduce yourself — your name, where you are, and what kind of day it's been.
+                However you'd greet a friend you've missed.
               </Text>
 
               <SpeakToEnter
@@ -157,15 +130,12 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
                 onToggleRecording={() => void toggleVoiceRecording()}
               />
 
-              <View style={styles.loginDivider}>
-                <OrDivider />
-              </View>
-
-              <View style={styles.oauthStack}>
-                <OAuthButton kind="apple" onPress={() => void continueWithOAuth('apple')} />
-                <OAuthButton kind="google" onPress={() => void continueWithOAuth('google')} />
-              </View>
-              <Text style={styles.authFoot}>PRIVATE BY DEFAULT · NOTHING IS SHARED</Text>
+              <Pressable onPress={continueToOnboarding} style={styles.emailEntryLink}>
+                <Text style={styles.emailEntryText}>
+                  <Text style={styles.emailEntryMuted}>Prefer to type? </Text>
+                  Use email
+                </Text>
+              </Pressable>
             </View>
           ) : (
             <View style={styles.backPanel}>
@@ -190,15 +160,6 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
               <Text style={styles.magicHint}>
                 No passwords, ever. The link works once and quietly expires.
               </Text>
-
-              <View style={styles.backDivider}>
-                <OrDivider />
-              </View>
-              <View style={styles.oauthStack}>
-                <OAuthButton kind="apple" onPress={() => void continueWithOAuth('apple')} />
-                <OAuthButton kind="google" onPress={() => void continueWithOAuth('google')} />
-              </View>
-              <Text style={styles.authFoot}>YOUR STORY STAYS YOURS</Text>
             </View>
           )}
 
@@ -321,10 +282,6 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     width: '100%',
   },
-  modeWrap: {
-    alignItems: 'center',
-    marginBottom: 42,
-  },
   newPanel: {
     alignItems: 'center',
   },
@@ -348,30 +305,26 @@ const styles = StyleSheet.create({
   newBody: {
     color: colors.muted,
     fontFamily: fonts.sans,
+    fontSize: 18,
+    fontWeight: '400',
+    lineHeight: 30,
+    marginTop: 36,
+    textAlign: 'center',
+  },
+  emailEntryLink: {
+    marginTop: 30,
+  },
+  emailEntryText: {
+    color: colors.blue,
+    fontFamily: fonts.sans,
     fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 23.25,
-    marginTop: 14,
+    fontWeight: '700',
+    lineHeight: 20,
     textAlign: 'center',
   },
-  loginDivider: {
-    marginTop: 40,
-    width: '100%',
-  },
-  oauthStack: {
-    gap: 11,
-    marginTop: 24,
-    width: '100%',
-  },
-  authFoot: {
-    color: '#b0a894',
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    fontWeight: '400',
-    letterSpacing: 0.88,
-    lineHeight: 11,
-    marginTop: 20,
-    textAlign: 'center',
+  emailEntryMuted: {
+    color: '#9aa3ad',
+    fontWeight: '600',
   },
   backPanel: {
     width: '100%',
@@ -409,9 +362,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     marginTop: 16,
     textAlign: 'center',
-  },
-  backDivider: {
-    marginTop: 34,
   },
   message: {
     color: colors.danger,
