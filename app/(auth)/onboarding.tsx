@@ -13,23 +13,16 @@ import {
 import {
   BackChevron,
   HairlineEmailField,
-  PasskeyToggle,
   PrimaryButton,
   SoftGlow,
   StepProgress,
   StoreyboxAuthWordmark,
 } from '@/components/AuthFlowComponents';
-import {
-  clearPendingFirstMemoryDraft,
-  markPendingFirstMemoryOnboardingComplete,
-  markPendingFirstMemoryWaitingForEmail,
-} from '@/lib/onboardingFirstMemory';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [isPasskeyEnabled, setIsPasskeyEnabled] = useState(true);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWaitingForEmail, setIsWaitingForEmail] = useState(false);
@@ -48,10 +41,9 @@ export default function OnboardingScreen() {
     router.replace('/login' as Href);
   }
 
-  async function skip() {
+  function skip() {
     setMessage(null);
-    await clearPendingFirstMemoryDraft();
-    router.replace('/login' as Href);
+    setStep(2);
   }
 
   async function next() {
@@ -69,7 +61,6 @@ export default function OnboardingScreen() {
 
     setIsSubmitting(true);
     setMessage(null);
-    await markPendingFirstMemoryWaitingForEmail(cleanEmail);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
@@ -85,7 +76,6 @@ export default function OnboardingScreen() {
       return;
     }
 
-    await markPendingFirstMemoryOnboardingComplete(cleanEmail);
     setIsWaitingForEmail(true);
   }
 
@@ -117,30 +107,6 @@ export default function OnboardingScreen() {
               <View style={styles.emailBlock}>
                 <HairlineEmailField email={email} onChangeText={setEmail} />
               </View>
-
-              <View style={styles.passkeyCard}>
-                <View style={styles.passkeyRow}>
-                  <View style={styles.passkeyCopyRow}>
-                    <View style={styles.faceGlyph}>
-                      <Text style={styles.faceGlyphText}>⌗</Text>
-                    </View>
-                    <View style={styles.passkeyTextWrap}>
-                      <Text style={styles.passkeyTitle}>Instant unlock on this device</Text>
-                      <Text style={styles.passkeySub}>
-                        Use Face ID or a passkey to skip the link next time.
-                      </Text>
-                    </View>
-                  </View>
-                  <PasskeyToggle
-                    enabled={isPasskeyEnabled}
-                    onToggle={() => setIsPasskeyEnabled((current) => !current)}
-                  />
-                </View>
-              </View>
-              <Text style={styles.caption}>
-                Face ID is only a shortcut on this device — turn it off and your email always gets
-                you back in.
-              </Text>
             </View>
           ) : null}
 
@@ -172,7 +138,7 @@ export default function OnboardingScreen() {
       <View style={styles.footer}>
         <Pressable
           disabled={isWaitingForEmail || isSubmitting}
-          onPress={() => void skip()}
+          onPress={skip}
           style={isWaitingForEmail && styles.hiddenBack}
         >
           <Text style={styles.skipText}>Skip for now</Text>
@@ -280,68 +246,6 @@ const styles = StyleSheet.create({
   },
   emailBlock: {
     marginTop: 30,
-  },
-  passkeyCard: {
-    backgroundColor: colors.surfaceWarm,
-    borderColor: '#e8e1d2',
-    borderRadius: 16,
-    borderWidth: 1,
-    marginTop: 30,
-    paddingHorizontal: 24,
-    paddingVertical: 22,
-  },
-  passkeyRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 18,
-    justifyContent: 'space-between',
-  },
-  passkeyCopyRow: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    gap: 13,
-  },
-  faceGlyph: {
-    alignItems: 'center',
-    backgroundColor: '#eef2f5',
-    borderRadius: 11,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  faceGlyphText: {
-    color: colors.blue,
-    fontFamily: fonts.mono,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  passkeyTextWrap: {
-    flex: 1,
-  },
-  passkeyTitle: {
-    color: colors.ink,
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  passkeySub: {
-    color: '#8a939e',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 17.55,
-    marginTop: 3,
-  },
-  caption: {
-    color: '#8a939e',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 19.5,
-    marginHorizontal: 2,
-    marginTop: 16,
   },
   confirm: {
     alignItems: 'center',
