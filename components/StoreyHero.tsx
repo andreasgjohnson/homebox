@@ -13,27 +13,30 @@ import {
 import { colors, fonts } from '@/lib/theme';
 
 const passageWords = [
-  'We',
-  'live',
-  'to',
-  'burn,',
-  'burn,',
-  'burn',
-  'like',
-  'fabulous',
-  'yellow',
-  'roman',
-  'candles',
-  'exploding',
-  'like',
-  'spiders',
-  'across',
+  'Small',
+  'moments',
+  'stay',
+  'lit',
+  'when',
+  'someone',
+  'makes',
+  'room',
+  'for',
+  'them,',
+  'a',
+  'voice',
+  'in',
   'the',
-  'stars.',
+  'dark',
+  'becoming',
+  'a',
+  'place',
+  'to',
+  'begin.',
 ];
 
-const amberWords = new Set(['fabulous', 'yellow', 'roman', 'candles']);
-const wordIntervalMs = 200;
+const amberWords = new Set(['stay', 'lit', 'voice', 'dark']);
+const wordIntervalMs = 190;
 const bloomStartMs = 4400;
 const greetStartMs = 7600;
 const introDoneMs = 11000;
@@ -43,7 +46,7 @@ type IntroPhase = 'night' | 'bloom' | 'greet';
 export function StoreyHero() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isCompact = width < 700;
+  const isPhone = width < 700;
   const [phase, setPhase] = useState<IntroPhase>('night');
   const [visibleWords, setVisibleWords] = useState(0);
   const [replayKey, setReplayKey] = useState(0);
@@ -125,14 +128,25 @@ export function StoreyHero() {
 
   return (
     <View style={stageStyle}>
-      <View style={[styles.nightLayer, { opacity: showNight ? 1 : 0 }]}>
+      <Pressable
+        accessibilityElementsHidden={!showNight}
+        accessibilityLabel="Skip intro"
+        accessibilityRole="button"
+        disabled={!showNight}
+        onPress={skipToGreet}
+        style={[
+          styles.nightLayer,
+          !isPhone && styles.nightLayerDesktop,
+          { opacity: showNight ? 1 : 0 },
+        ]}
+      >
         <StarField />
         <View style={styles.horizonGlow} />
-        <View style={styles.nightContent}>
+        <View style={[styles.nightContent, isPhone ? styles.nightContentPhone : styles.nightContentDesktop]}>
           <Text style={styles.nightWordmark}>STOREYBOX</Text>
           <View style={styles.passageWrap}>
             <View style={styles.passageRule} />
-            <Text style={styles.passage}>
+            <Text style={[styles.passage, isPhone ? styles.passagePhone : styles.passageDesktop]}>
               {passageWords.map((word, index) => (
                 <Text
                   key={`${word}-${index}`}
@@ -150,26 +164,33 @@ export function StoreyHero() {
           </View>
 
           <View style={styles.beginWrap}>
-            <Pressable onPress={skipToGreet} style={styles.beginButton}>
+            <View style={styles.beginButton}>
               <View style={[styles.pulseRing, styles.pulseRingOne]} />
               <View style={[styles.pulseRing, styles.pulseRingTwo]} />
               <View style={styles.beginCore}>
                 <HeroMicIcon color="#f1d8aa" />
               </View>
-            </Pressable>
+            </View>
             <Text style={styles.beginLabel}>CLICK TO BEGIN YOUR STOREY</Text>
           </View>
         </View>
         <View style={[styles.heroEmber, showBloom && styles.heroEmberBloom]} />
-      </View>
+      </Pressable>
 
-      <View style={[styles.greetLayer, { opacity: showGreet ? 1 : 0 }]}>
+      <View
+        accessibilityElementsHidden={!showGreet}
+        style={[
+          styles.greetLayer,
+          !isPhone && styles.greetLayerDesktop,
+          { opacity: showGreet ? 1 : 0 },
+        ]}
+      >
         <View style={styles.greetSunrise} />
-        <View style={styles.greetGlow} />
-        <View style={[styles.greetContent, !isCompact && styles.greetContentWide]}>
+        <View style={[styles.greetGlow, isPhone ? styles.greetGlowPhone : styles.greetGlowDesktop]} />
+        <View style={[styles.greetContent, isPhone ? styles.greetContentPhone : styles.greetContentDesktop]}>
           <Text style={styles.greetWordmark}>STOREYBOX</Text>
           <View style={styles.greetIntro}>
-            <Text style={styles.greetTitle}>
+            <Text style={[styles.greetTitle, isPhone ? styles.greetTitlePhone : styles.greetTitleDesktop]}>
               There you are.{'\n'}
               <Text style={styles.greetTitleItalic}>I'm Storey.</Text>
             </Text>
@@ -179,7 +200,12 @@ export function StoreyHero() {
           </View>
 
           <View style={styles.greetActions}>
-            <Pressable onPress={goToOnboarding} style={styles.greetMic}>
+            <Pressable
+              accessibilityLabel="Begin with voice"
+              accessibilityRole="button"
+              onPress={goToOnboarding}
+              style={styles.greetMic}
+            >
               <View style={styles.greetHaze} />
               <View style={styles.greetRing} />
               <View style={styles.greetCore}>
@@ -187,7 +213,12 @@ export function StoreyHero() {
               </View>
             </Pressable>
             <Text style={styles.greetHint}>Press, and say hello.</Text>
-            <Pressable onPress={goToOnboarding} style={styles.emailLink}>
+            <Pressable
+              accessibilityLabel="Use email instead"
+              accessibilityRole="button"
+              onPress={goToOnboarding}
+              style={styles.emailLink}
+            >
               <Text style={styles.emailLinkText}>Use email instead</Text>
             </Pressable>
             <Text style={styles.privacyLine}>PRIVATE BY DEFAULT · YOUR STORY STAYS YOURS</Text>
@@ -197,10 +228,12 @@ export function StoreyHero() {
 
       <View style={[styles.envelope, getEnvelopeStyle(showBloom)]} />
 
-      <Pressable onPress={replayIntro} style={styles.replayButton}>
-        <Text style={styles.replayIcon}>↺</Text>
-        <Text style={styles.replayText}>REPLAY</Text>
-      </Pressable>
+      {__DEV__ ? (
+        <Pressable onPress={replayIntro} style={styles.replayButton}>
+          <Text style={styles.replayIcon}>↺</Text>
+          <Text style={styles.replayText}>REPLAY</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -302,6 +335,10 @@ const styles = StyleSheet.create({
     transition: 'opacity 1.2s ease',
     zIndex: 2,
   } as unknown as ViewStyle,
+  nightLayerDesktop: {
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 38%,#2c3c54 0%,#1b2533 48%,#111822 100%)',
+  } as unknown as ViewStyle,
   horizonGlow: {
     backgroundImage: 'radial-gradient(ellipse at 50% 100%,rgba(233,199,154,.30),transparent 66%)',
     bottom: '-6%',
@@ -316,13 +353,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'column',
     left: 0,
-    paddingBottom: 64,
-    paddingHorizontal: 40,
-    paddingTop: 84,
     position: 'absolute',
     right: 0,
     textAlign: 'center',
     top: 0,
+  } as unknown as ViewStyle,
+  nightContentPhone: {
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+  },
+  nightContentDesktop: {
+    left: '50%',
+    maxWidth: 430,
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+    transform: [{ translateX: -215 }],
+    width: 430,
   } as unknown as ViewStyle,
   nightWordmark: {
     color: '#9fb4c9',
@@ -352,12 +400,19 @@ const styles = StyleSheet.create({
   passage: {
     color: '#eef2f6',
     fontFamily: fonts.serif,
-    fontSize: 24,
     fontWeight: '300',
     letterSpacing: 0,
+    textAlign: 'center',
+  },
+  passagePhone: {
+    fontSize: 24,
     lineHeight: 37.92,
     maxWidth: 308,
-    textAlign: 'center',
+  },
+  passageDesktop: {
+    fontSize: 27,
+    lineHeight: 42,
+    maxWidth: 350,
   },
   passageWord: {
     color: '#f0d9ab',
@@ -368,7 +423,8 @@ const styles = StyleSheet.create({
   passageWordAmber: {
     color: '#eccf9a',
     fontStyle: 'italic',
-  } as TextStyle,
+    textShadow: '0 0 9px rgba(236,200,143,.4)',
+  } as unknown as TextStyle,
   passageWordVisible: {
     color: '#eef2f6',
     opacity: 1,
@@ -450,6 +506,10 @@ const styles = StyleSheet.create({
     transition: 'opacity 1.2s ease',
     zIndex: 3,
   } as unknown as ViewStyle,
+  greetLayerDesktop: {
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.28),transparent 50%), linear-gradient(180deg,#f7f3ec 0%,#f3ecdf 100%)',
+  } as unknown as ViewStyle,
   greetSunrise: {
     backgroundImage: 'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.4),transparent 64%)',
     height: '36%',
@@ -461,31 +521,47 @@ const styles = StyleSheet.create({
   } as unknown as ViewStyle,
   greetGlow: {
     backgroundImage: 'radial-gradient(ellipse,#cbdcea,transparent 68%)',
-    height: 320,
-    left: '50%',
     pointerEvents: 'none',
     position: 'absolute',
+  } as unknown as ViewStyle,
+  greetGlowPhone: {
+    height: 320,
+    left: '50%',
     top: '34%',
     transform: [{ translateX: -220 }, { translateY: -160 }],
     width: 440,
-  } as unknown as ViewStyle,
+  },
+  greetGlowDesktop: {
+    height: 360,
+    left: '50%',
+    top: '44%',
+    transform: [{ translateX: -240 }, { translateY: -180 }],
+    width: 480,
+  },
   greetContent: {
     alignItems: 'center',
     bottom: 0,
     flexDirection: 'column',
     left: 0,
-    paddingBottom: 56,
-    paddingHorizontal: 40,
-    paddingTop: 104,
     position: 'absolute',
     right: 0,
     textAlign: 'center',
     top: 0,
   } as unknown as ViewStyle,
-  greetContentWide: {
-    justifyContent: 'center',
-    paddingTop: 64,
+  greetContentPhone: {
+    paddingBottom: 56,
+    paddingHorizontal: 40,
+    paddingTop: 104,
   },
+  greetContentDesktop: {
+    left: '50%',
+    maxWidth: 430,
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+    transform: [{ translateX: -215 }],
+    width: 430,
+  } as unknown as ViewStyle,
   greetWordmark: {
     color: colors.blue,
     fontFamily: fonts.mono,
@@ -501,11 +577,17 @@ const styles = StyleSheet.create({
   greetTitle: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 42,
     fontWeight: '300',
-    letterSpacing: -0.84,
-    lineHeight: 44.52,
+    letterSpacing: 0,
     textAlign: 'center',
+  },
+  greetTitlePhone: {
+    fontSize: 42,
+    lineHeight: 44.52,
+  },
+  greetTitleDesktop: {
+    fontSize: 48,
+    lineHeight: 51,
   },
   greetTitleItalic: {
     fontStyle: 'italic',
@@ -666,7 +748,6 @@ const styles = StyleSheet.create({
   },
   micStem: {
     height: 7,
-    marginTop: 0,
     width: 1.6,
   },
 });
