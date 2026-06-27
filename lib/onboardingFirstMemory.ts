@@ -121,7 +121,7 @@ export async function finalizePendingFirstMemory(
 ): Promise<FirstMemoryFinalizationResult> {
   let draft = await getPendingFirstMemoryDraft();
 
-  if (!draft?.onboardingCompletedAt) {
+  if (!draft) {
     return { status: 'idle' };
   }
 
@@ -133,6 +133,14 @@ export async function finalizePendingFirstMemory(
   const sessionEmail = options.userEmail?.toLowerCase();
 
   if (requestedEmail && sessionEmail && requestedEmail !== sessionEmail) {
+    return { status: 'idle' };
+  }
+
+  const canFinalize =
+    Boolean(draft.onboardingCompletedAt) ||
+    Boolean(requestedEmail && sessionEmail && requestedEmail === sessionEmail);
+
+  if (!canFinalize) {
     return { status: 'idle' };
   }
 
