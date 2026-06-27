@@ -1,7 +1,6 @@
 import { type Href, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,7 +10,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { savePendingFirstMemoryRecording } from '@/lib/onboardingFirstMemory';
 import { colors, fonts } from '@/lib/theme';
 
 const passageWords = [
@@ -42,10 +40,8 @@ const wordIntervalMs = 190;
 const bloomStartMs = 4400;
 const greetStartMs = 7600;
 const introDoneMs = 11000;
-const maxRecordingMs = 90_000;
 
 type IntroPhase = 'night' | 'bloom' | 'greet';
-type RecordingStatus = 'idle' | 'recording' | 'saving';
 
 export function StoreyHero() {
   const router = useRouter();
@@ -55,12 +51,6 @@ export function StoreyHero() {
   const [visibleWords, setVisibleWords] = useState(0);
   const [replayKey, setReplayKey] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [recordingStatus, setRecordingStatus] = useState<RecordingStatus>('idle');
-  const [recordingMessage, setRecordingMessage] = useState<string | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timersRef = useRef<Array<ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>>>([]);
 
   useEffect(() => {
@@ -74,13 +64,6 @@ export function StoreyHero() {
     updatePreference();
     mediaQuery.addEventListener?.('change', updatePreference);
     return () => mediaQuery.removeEventListener?.('change', updatePreference);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearRecordingTimeout();
-      stopMediaTracks();
-    };
   }, []);
 
   useEffect(() => {
@@ -141,127 +124,9 @@ export function StoreyHero() {
     router.push('/onboarding' as Href);
   }
 
-  async function handleVoicePress() {
-    if (recordingStatus === 'saving') {
-      return;
-    }
-
-    if (recordingStatus === 'recording') {
-      stopFirstMemoryRecording();
-      return;
-    }
-
-    await startFirstMemoryRecording();
-  }
-
-  async function startFirstMemoryRecording() {
-    if (
-      Platform.OS !== 'web' ||
-      typeof navigator === 'undefined' ||
-      !navigator.mediaDevices?.getUserMedia ||
-      typeof MediaRecorder === 'undefined'
-    ) {
-      setRecordingMessage('Recording works in a mobile browser with microphone access.');
-      return;
-    }
-
-    try {
-      setRecordingMessage('Starting microphone...');
-      audioChunksRef.current = [];
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = getSupportedRecordingMimeType();
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-
-      mediaStreamRef.current = stream;
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onerror = () => {
-        clearRecordingTimeout();
-        stopMediaTracks();
-        setRecordingStatus('idle');
-        setRecordingMessage('The microphone stopped unexpectedly. Try once more.');
-      };
-
-      recorder.onstop = () => {
-        void saveFirstMemoryDraft(recorder.mimeType || mimeType);
-      };
-
-      recorder.start();
-      setRecordingStatus('recording');
-      setRecordingMessage('Recording. Tap again when you are done.');
-      recordingTimeoutRef.current = setTimeout(stopFirstMemoryRecording, maxRecordingMs);
-    } catch {
-      clearRecordingTimeout();
-      stopMediaTracks();
-      setRecordingStatus('idle');
-      setRecordingMessage('Allow microphone access to record your first memory.');
-    }
-  }
-
-  function stopFirstMemoryRecording() {
-    clearRecordingTimeout();
-    const recorder = mediaRecorderRef.current;
-
-    if (recorder && recorder.state !== 'inactive') {
-      setRecordingStatus('saving');
-      setRecordingMessage('Saving your first memory...');
-      recorder.stop();
-      return;
-    }
-
-    setRecordingStatus('idle');
-    stopMediaTracks();
-  }
-
-  async function saveFirstMemoryDraft(mimeType: string) {
-    try {
-      const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
-      audioChunksRef.current = [];
-      mediaRecorderRef.current = null;
-      stopMediaTracks();
-
-      if (blob.size < 512) {
-        setRecordingStatus('idle');
-        setRecordingMessage('That recording was too short. Hold the mic a moment longer.');
-        return;
-      }
-
-      await savePendingFirstMemoryRecording(blob);
-      setRecordingStatus('idle');
-      setRecordingMessage(null);
-      router.push('/onboarding' as Href);
-    } catch {
-      setRecordingStatus('idle');
-      setRecordingMessage('We could not save that recording. Try again.');
-    }
-  }
-
-  function clearRecordingTimeout() {
-    if (recordingTimeoutRef.current) {
-      clearTimeout(recordingTimeoutRef.current);
-      recordingTimeoutRef.current = null;
-    }
-  }
-
-  function stopMediaTracks() {
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    mediaStreamRef.current = null;
-  }
-
-
   const showNight = phase === 'night' || phase === 'bloom';
   const showBloom = phase === 'bloom';
   const showGreet = phase === 'greet';
-  const isRecording = recordingStatus === 'recording';
-  const isSavingRecording = recordingStatus === 'saving';
 
   return (
     <View style={stageStyle}>
@@ -338,26 +203,22 @@ export function StoreyHero() {
 
           <View style={[styles.greetActions, isPhone ? styles.greetActionsPhone : styles.greetActionsDesktop]}>
             <Pressable
-              accessibilityLabel={isRecording ? 'Finish first recording' : 'Begin first recording'}
+              accessibilityLabel="Begin with Storey"
               accessibilityRole="button"
-              disabled={isSavingRecording}
-              onPress={() => void handleVoicePress()}
+              onPress={goToOnboarding}
               style={styles.greetMic}
             >
-              <View style={[styles.greetHaze, isRecording && styles.greetHazeLive]} />
-              <View style={[styles.greetRing, isRecording && styles.greetRingLive]} />
-              {isRecording ? <View style={styles.greetLiveRing} /> : null}
-              <View style={[styles.greetCore, isRecording && styles.greetCoreLive]}>
+              <View style={styles.greetHaze} />
+              <View style={styles.greetRing} />
+              <View style={styles.greetCore}>
                 <HeroMicIcon color="#cdd9e5" />
               </View>
             </Pressable>
-            {recordingMessage ? <Text style={styles.recordingMessage}>{recordingMessage}</Text> : null}
             <Pressable
               accessibilityLabel="Use email instead"
               accessibilityRole="button"
-              disabled={isRecording || isSavingRecording}
               onPress={goToOnboarding}
-              style={[styles.emailLink, (isRecording || isSavingRecording) && styles.emailLinkDisabled]}
+              style={styles.emailLink}
             >
               <Text style={styles.emailLinkText}>Use email instead</Text>
             </Pressable>
@@ -375,18 +236,6 @@ export function StoreyHero() {
         </Pressable>
       ) : null}
     </View>
-  );
-}
-
-function getSupportedRecordingMimeType() {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
-    return '';
-  }
-
-  return (
-    ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((mimeType) =>
-      MediaRecorder.isTypeSupported(mimeType),
-    ) ?? ''
   );
 }
 
@@ -779,10 +628,6 @@ const styles = StyleSheet.create({
     right: -18,
     top: -18,
   } as unknown as ViewStyle,
-  greetHazeLive: {
-    opacity: 1,
-    transform: [{ scale: 1.08 }],
-  },
   greetRing: {
     borderColor: '#cdd9e5',
     borderRadius: 58,
@@ -792,20 +637,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-  },
-  greetRingLive: {
-    borderColor: '#8fb5d4',
-    borderWidth: 2,
-  },
-  greetLiveRing: {
-    borderColor: 'rgba(143,181,212,.32)',
-    borderRadius: 68,
-    borderWidth: 1,
-    bottom: -10,
-    left: -10,
-    position: 'absolute',
-    right: -10,
-    top: -10,
   },
   greetCore: {
     alignItems: 'center',
@@ -819,28 +650,9 @@ const styles = StyleSheet.create({
     right: 13,
     top: 13,
   } as unknown as ViewStyle,
-  greetCoreLive: {
-    backgroundColor: '#263140',
-    boxShadow: '0 18px 42px rgba(74,110,143,.34)',
-  } as unknown as ViewStyle,
-  recordingMessage: {
-    color: '#6b7480',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 16,
-    maxWidth: 260,
-    minHeight: 18,
-    textAlign: 'center',
-  },
   emailLink: {
     marginTop: 24,
   },
-  emailLinkDisabled: {
-    opacity: 0.44,
-    pointerEvents: 'none',
-  } as ViewStyle,
   emailLinkText: {
     color: colors.blue,
     fontFamily: fonts.sans,

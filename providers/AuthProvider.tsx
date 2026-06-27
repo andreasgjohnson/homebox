@@ -9,7 +9,6 @@ import {
 } from 'react';
 
 import { supabase, supabaseConfigError } from '@/lib/supabase';
-import { clearPendingFirstMemoryDraft } from '@/lib/onboardingFirstMemory';
 
 type AuthContextValue = {
   configError: string | null;
@@ -40,11 +39,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'SIGNED_OUT') {
-        void clearPendingFirstMemoryDraft();
-      }
-
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setIsLoading(false);
     });

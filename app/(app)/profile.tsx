@@ -11,10 +11,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
-import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   getProfilePhotoPath,
   getProfilePhotoPreviewUrl,
@@ -29,6 +30,8 @@ import { useAuth } from '@/providers/AuthProvider';
 export default function ProfileScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 760;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
@@ -209,7 +212,10 @@ export default function ProfileScreen() {
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.eyebrow}>SETTINGS</Text>
           <Text style={styles.title}>Your archive</Text>
           <Text style={styles.body}>
@@ -339,6 +345,7 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {isPhone ? <BottomTabBar activeTab="you" /> : null}
     </SafeAreaView>
   );
 }
@@ -395,6 +402,9 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     width: '100%',
+  },
+  containerPhone: {
+    paddingBottom: 112,
   },
   eyebrow: {
     ...typography.eyebrow,
