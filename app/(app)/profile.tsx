@@ -11,10 +11,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
-import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   getProfilePhotoPath,
   getProfilePhotoPreviewUrl,
@@ -22,18 +23,22 @@ import {
   uploadProfilePhoto,
 } from '@/lib/profilePhotos';
 import { getProfile, updateProfileName } from '@/lib/profiles';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts, radii, typography } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 760;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -183,7 +188,14 @@ export default function ProfileScreen() {
     setIsUploadingPhoto(false);
   }
 
-  const canSave = !isLoading && !isSaving && !isUploadingPhoto && Boolean(firstName.trim() || lastName.trim());
+  async function signOut() {
+    setIsSigningOut(true);
+    await supabase.auth.signOut();
+    setIsSigningOut(false);
+  }
+
+  const canSave =
+    !isLoading && !isSaving && !isSigningOut && !isUploadingPhoto && Boolean(firstName.trim() || lastName.trim());
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -200,7 +212,10 @@ export default function ProfileScreen() {
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.eyebrow}>SETTINGS</Text>
           <Text style={styles.title}>Your archive</Text>
           <Text style={styles.body}>
@@ -308,11 +323,29 @@ export default function ProfileScreen() {
                     <Text style={styles.primaryButtonText}>Save profile</Text>
                   )}
                 </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSigningOut || isSaving || isUploadingPhoto}
+                  onPress={() => void signOut()}
+                  style={({ pressed }) => [
+                    styles.logoutButton,
+                    (isSigningOut || isSaving || isUploadingPhoto) && styles.buttonDisabled,
+                    pressed && styles.buttonPressed,
+                  ]}
+                >
+                  {isSigningOut ? (
+                    <ActivityIndicator color={colors.muted} />
+                  ) : (
+                    <Text style={styles.logoutButtonText}>Log out</Text>
+                  )}
+                </Pressable>
               </View>
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {isPhone ? <BottomTabBar activeTab="you" /> : null}
     </SafeAreaView>
   );
 }
@@ -369,6 +402,9 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     width: '100%',
+  },
+  containerPhone: {
+    paddingBottom: 112,
   },
   eyebrow: {
     ...typography.eyebrow,
@@ -518,6 +554,20 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '700',
+  },
+  logoutButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  logoutButtonText: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   buttonPressed: {
     opacity: 0.65,

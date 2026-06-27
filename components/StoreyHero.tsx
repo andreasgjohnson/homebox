@@ -1,6 +1,7 @@
 import { type Href, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,44 +11,56 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { savePendingFirstMemoryRecording } from '@/lib/onboardingFirstMemory';
 import { colors, fonts } from '@/lib/theme';
 
 const passageWords = [
-  'We',
-  'live',
-  'to',
-  'burn,',
-  'burn,',
-  'burn',
-  'like',
-  'fabulous',
-  'yellow',
-  'roman',
-  'candles',
-  'exploding',
-  'like',
-  'spiders',
-  'across',
+  'Small',
+  'moments',
+  'stay',
+  'lit',
+  'when',
+  'someone',
+  'makes',
+  'room',
+  'for',
+  'them,',
+  'a',
+  'voice',
+  'in',
   'the',
-  'stars.',
+  'dark',
+  'becoming',
+  'a',
+  'place',
+  'to',
+  'begin.',
 ];
 
-const amberWords = new Set(['fabulous', 'yellow', 'roman', 'candles']);
-const wordIntervalMs = 200;
+const amberWords = new Set(['stay', 'lit', 'voice', 'dark']);
+const wordIntervalMs = 190;
 const bloomStartMs = 4400;
 const greetStartMs = 7600;
 const introDoneMs = 11000;
+const maxRecordingMs = 90_000;
 
 type IntroPhase = 'night' | 'bloom' | 'greet';
+type RecordingStatus = 'idle' | 'recording' | 'saving';
 
 export function StoreyHero() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isCompact = width < 700;
+  const isPhone = width < 700;
   const [phase, setPhase] = useState<IntroPhase>('night');
   const [visibleWords, setVisibleWords] = useState(0);
   const [replayKey, setReplayKey] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState<RecordingStatus>('idle');
+  const [recordingMessage, setRecordingMessage] = useState<string | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timersRef = useRef<Array<ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>>>([]);
 
   useEffect(() => {
@@ -64,11 +77,20 @@ export function StoreyHero() {
   }, []);
 
   useEffect(() => {
-    clearTimers();
-    setPhase(prefersReducedMotion ? 'greet' : 'night');
-    setVisibleWords(prefersReducedMotion ? passageWords.length : 0);
+    return () => {
+      clearRecordingTimeout();
+      stopMediaTracks();
+    };
+  }, []);
 
-    if (prefersReducedMotion) {
+  useEffect(() => {
+    clearTimers();
+    const shouldSkipIntro = prefersReducedMotion && !isPhone;
+
+    setPhase(shouldSkipIntro ? 'greet' : 'night');
+    setVisibleWords(shouldSkipIntro ? passageWords.length : 0);
+
+    if (shouldSkipIntro) {
       return clearTimers;
     }
 
@@ -93,7 +115,7 @@ export function StoreyHero() {
 
     timersRef.current = [wordTimer, bloomTimer, greetTimer, doneTimer];
     return clearTimers;
-  }, [prefersReducedMotion, replayKey]);
+  }, [isPhone, prefersReducedMotion, replayKey]);
 
   const stageStyle = useMemo(
     () => [styles.stage, phase === 'greet' && styles.stageDawn],
@@ -119,20 +141,149 @@ export function StoreyHero() {
     router.push('/onboarding' as Href);
   }
 
+  async function handleVoicePress() {
+    if (recordingStatus === 'saving') {
+      return;
+    }
+
+    if (recordingStatus === 'recording') {
+      stopFirstMemoryRecording();
+      return;
+    }
+
+    await startFirstMemoryRecording();
+  }
+
+  async function startFirstMemoryRecording() {
+    if (
+      Platform.OS !== 'web' ||
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === 'undefined'
+    ) {
+      setRecordingMessage('Recording works in a mobile browser with microphone access.');
+      return;
+    }
+
+    try {
+      setRecordingMessage('Starting microphone...');
+      audioChunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getSupportedRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        clearRecordingTimeout();
+        stopMediaTracks();
+        setRecordingStatus('idle');
+        setRecordingMessage('The microphone stopped unexpectedly. Try once more.');
+      };
+
+      recorder.onstop = () => {
+        void saveFirstMemoryDraft(recorder.mimeType || mimeType);
+      };
+
+      recorder.start();
+      setRecordingStatus('recording');
+      setRecordingMessage('Recording. Tap again when you are done.');
+      recordingTimeoutRef.current = setTimeout(stopFirstMemoryRecording, maxRecordingMs);
+    } catch {
+      clearRecordingTimeout();
+      stopMediaTracks();
+      setRecordingStatus('idle');
+      setRecordingMessage('Allow microphone access to record your first memory.');
+    }
+  }
+
+  function stopFirstMemoryRecording() {
+    clearRecordingTimeout();
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder && recorder.state !== 'inactive') {
+      setRecordingStatus('saving');
+      setRecordingMessage('Saving your first memory...');
+      recorder.stop();
+      return;
+    }
+
+    setRecordingStatus('idle');
+    stopMediaTracks();
+  }
+
+  async function saveFirstMemoryDraft(mimeType: string) {
+    try {
+      const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = null;
+      stopMediaTracks();
+
+      if (blob.size < 512) {
+        setRecordingStatus('idle');
+        setRecordingMessage('That recording was too short. Hold the mic a moment longer.');
+        return;
+      }
+
+      await savePendingFirstMemoryRecording(blob);
+      setRecordingStatus('idle');
+      setRecordingMessage(null);
+      router.push('/onboarding' as Href);
+    } catch {
+      setRecordingStatus('idle');
+      setRecordingMessage('We could not save that recording. Try again.');
+    }
+  }
+
+  function clearRecordingTimeout() {
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+  }
+
+  function stopMediaTracks() {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }
+
+
   const showNight = phase === 'night' || phase === 'bloom';
   const showBloom = phase === 'bloom';
   const showGreet = phase === 'greet';
+  const isRecording = recordingStatus === 'recording';
+  const isSavingRecording = recordingStatus === 'saving';
 
   return (
     <View style={stageStyle}>
-      <View style={[styles.nightLayer, { opacity: showNight ? 1 : 0 }]}>
+      <Pressable
+        accessibilityElementsHidden={!showNight}
+        accessibilityLabel="Skip intro"
+        accessibilityRole="button"
+        disabled={!showNight}
+        onPress={skipToGreet}
+        style={[
+          styles.nightLayer,
+          !isPhone && styles.nightLayerDesktop,
+          { opacity: showNight ? 1 : 0 },
+        ]}
+      >
         <StarField />
         <View style={styles.horizonGlow} />
-        <View style={styles.nightContent}>
+        <View style={[styles.nightContent, isPhone ? styles.nightContentPhone : styles.nightContentDesktop]}>
           <Text style={styles.nightWordmark}>STOREYBOX</Text>
           <View style={styles.passageWrap}>
             <View style={styles.passageRule} />
-            <Text style={styles.passage}>
+            <Text style={[styles.passage, isPhone ? styles.passagePhone : styles.passageDesktop]}>
               {passageWords.map((word, index) => (
                 <Text
                   key={`${word}-${index}`}
@@ -150,26 +301,33 @@ export function StoreyHero() {
           </View>
 
           <View style={styles.beginWrap}>
-            <Pressable onPress={skipToGreet} style={styles.beginButton}>
+            <View style={styles.beginButton}>
               <View style={[styles.pulseRing, styles.pulseRingOne]} />
               <View style={[styles.pulseRing, styles.pulseRingTwo]} />
               <View style={styles.beginCore}>
                 <HeroMicIcon color="#f1d8aa" />
               </View>
-            </Pressable>
+            </View>
             <Text style={styles.beginLabel}>CLICK TO BEGIN YOUR STOREY</Text>
           </View>
         </View>
         <View style={[styles.heroEmber, showBloom && styles.heroEmberBloom]} />
-      </View>
+      </Pressable>
 
-      <View style={[styles.greetLayer, { opacity: showGreet ? 1 : 0 }]}>
+      <View
+        accessibilityElementsHidden={!showGreet}
+        style={[
+          styles.greetLayer,
+          !isPhone && styles.greetLayerDesktop,
+          { opacity: showGreet ? 1 : 0 },
+        ]}
+      >
         <View style={styles.greetSunrise} />
-        <View style={styles.greetGlow} />
-        <View style={[styles.greetContent, !isCompact && styles.greetContentWide]}>
+        <View style={[styles.greetGlow, isPhone ? styles.greetGlowPhone : styles.greetGlowDesktop]} />
+        <View style={[styles.greetContent, isPhone ? styles.greetContentPhone : styles.greetContentDesktop]}>
           <Text style={styles.greetWordmark}>STOREYBOX</Text>
           <View style={styles.greetIntro}>
-            <Text style={styles.greetTitle}>
+            <Text style={[styles.greetTitle, isPhone ? styles.greetTitlePhone : styles.greetTitleDesktop]}>
               There you are.{'\n'}
               <Text style={styles.greetTitleItalic}>I'm Storey.</Text>
             </Text>
@@ -178,16 +336,29 @@ export function StoreyHero() {
             </Text>
           </View>
 
-          <View style={styles.greetActions}>
-            <Pressable onPress={goToOnboarding} style={styles.greetMic}>
-              <View style={styles.greetHaze} />
-              <View style={styles.greetRing} />
-              <View style={styles.greetCore}>
+          <View style={[styles.greetActions, isPhone ? styles.greetActionsPhone : styles.greetActionsDesktop]}>
+            <Pressable
+              accessibilityLabel={isRecording ? 'Finish first recording' : 'Begin first recording'}
+              accessibilityRole="button"
+              disabled={isSavingRecording}
+              onPress={() => void handleVoicePress()}
+              style={styles.greetMic}
+            >
+              <View style={[styles.greetHaze, isRecording && styles.greetHazeLive]} />
+              <View style={[styles.greetRing, isRecording && styles.greetRingLive]} />
+              {isRecording ? <View style={styles.greetLiveRing} /> : null}
+              <View style={[styles.greetCore, isRecording && styles.greetCoreLive]}>
                 <HeroMicIcon color="#cdd9e5" />
               </View>
             </Pressable>
-            <Text style={styles.greetHint}>Press, and say hello.</Text>
-            <Pressable onPress={goToOnboarding} style={styles.emailLink}>
+            {recordingMessage ? <Text style={styles.recordingMessage}>{recordingMessage}</Text> : null}
+            <Pressable
+              accessibilityLabel="Use email instead"
+              accessibilityRole="button"
+              disabled={isRecording || isSavingRecording}
+              onPress={goToOnboarding}
+              style={[styles.emailLink, (isRecording || isSavingRecording) && styles.emailLinkDisabled]}
+            >
               <Text style={styles.emailLinkText}>Use email instead</Text>
             </Pressable>
             <Text style={styles.privacyLine}>PRIVATE BY DEFAULT · YOUR STORY STAYS YOURS</Text>
@@ -197,11 +368,25 @@ export function StoreyHero() {
 
       <View style={[styles.envelope, getEnvelopeStyle(showBloom)]} />
 
-      <Pressable onPress={replayIntro} style={styles.replayButton}>
-        <Text style={styles.replayIcon}>↺</Text>
-        <Text style={styles.replayText}>REPLAY</Text>
-      </Pressable>
+      {__DEV__ ? (
+        <Pressable onPress={replayIntro} style={styles.replayButton}>
+          <Text style={styles.replayIcon}>↺</Text>
+          <Text style={styles.replayText}>REPLAY</Text>
+        </Pressable>
+      ) : null}
     </View>
+  );
+}
+
+function getSupportedRecordingMimeType() {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+    return '';
+  }
+
+  return (
+    ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((mimeType) =>
+      MediaRecorder.isTypeSupported(mimeType),
+    ) ?? ''
   );
 }
 
@@ -302,6 +487,10 @@ const styles = StyleSheet.create({
     transition: 'opacity 1.2s ease',
     zIndex: 2,
   } as unknown as ViewStyle,
+  nightLayerDesktop: {
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 38%,#2c3c54 0%,#1b2533 48%,#111822 100%)',
+  } as unknown as ViewStyle,
   horizonGlow: {
     backgroundImage: 'radial-gradient(ellipse at 50% 100%,rgba(233,199,154,.30),transparent 66%)',
     bottom: '-6%',
@@ -316,13 +505,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'column',
     left: 0,
-    paddingBottom: 64,
-    paddingHorizontal: 40,
-    paddingTop: 84,
     position: 'absolute',
     right: 0,
     textAlign: 'center',
     top: 0,
+  } as unknown as ViewStyle,
+  nightContentPhone: {
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+  },
+  nightContentDesktop: {
+    left: '50%',
+    maxWidth: 430,
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+    transform: [{ translateX: -215 }],
+    width: 430,
   } as unknown as ViewStyle,
   nightWordmark: {
     color: '#9fb4c9',
@@ -352,12 +552,19 @@ const styles = StyleSheet.create({
   passage: {
     color: '#eef2f6',
     fontFamily: fonts.serif,
-    fontSize: 24,
     fontWeight: '300',
     letterSpacing: 0,
+    textAlign: 'center',
+  },
+  passagePhone: {
+    fontSize: 24,
     lineHeight: 37.92,
     maxWidth: 308,
-    textAlign: 'center',
+  },
+  passageDesktop: {
+    fontSize: 27,
+    lineHeight: 42,
+    maxWidth: 350,
   },
   passageWord: {
     color: '#f0d9ab',
@@ -368,7 +575,8 @@ const styles = StyleSheet.create({
   passageWordAmber: {
     color: '#eccf9a',
     fontStyle: 'italic',
-  } as TextStyle,
+    textShadow: '0 0 9px rgba(236,200,143,.4)',
+  } as unknown as TextStyle,
   passageWordVisible: {
     color: '#eef2f6',
     opacity: 1,
@@ -450,6 +658,10 @@ const styles = StyleSheet.create({
     transition: 'opacity 1.2s ease',
     zIndex: 3,
   } as unknown as ViewStyle,
+  greetLayerDesktop: {
+    backgroundImage:
+      'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.28),transparent 50%), linear-gradient(180deg,#f7f3ec 0%,#f3ecdf 100%)',
+  } as unknown as ViewStyle,
   greetSunrise: {
     backgroundImage: 'radial-gradient(ellipse at 50% 0%,rgba(238,206,150,.4),transparent 64%)',
     height: '36%',
@@ -461,31 +673,47 @@ const styles = StyleSheet.create({
   } as unknown as ViewStyle,
   greetGlow: {
     backgroundImage: 'radial-gradient(ellipse,#cbdcea,transparent 68%)',
-    height: 320,
-    left: '50%',
     pointerEvents: 'none',
     position: 'absolute',
+  } as unknown as ViewStyle,
+  greetGlowPhone: {
+    height: 320,
+    left: '50%',
     top: '34%',
     transform: [{ translateX: -220 }, { translateY: -160 }],
     width: 440,
-  } as unknown as ViewStyle,
+  },
+  greetGlowDesktop: {
+    height: 360,
+    left: '50%',
+    top: '44%',
+    transform: [{ translateX: -240 }, { translateY: -180 }],
+    width: 480,
+  },
   greetContent: {
     alignItems: 'center',
     bottom: 0,
     flexDirection: 'column',
     left: 0,
-    paddingBottom: 56,
-    paddingHorizontal: 40,
-    paddingTop: 104,
     position: 'absolute',
     right: 0,
     textAlign: 'center',
     top: 0,
   } as unknown as ViewStyle,
-  greetContentWide: {
-    justifyContent: 'center',
-    paddingTop: 64,
+  greetContentPhone: {
+    paddingBottom: 44,
+    paddingHorizontal: 40,
+    paddingTop: 86,
   },
+  greetContentDesktop: {
+    left: '50%',
+    maxWidth: 430,
+    paddingBottom: 64,
+    paddingHorizontal: 40,
+    paddingTop: 84,
+    transform: [{ translateX: -215 }],
+    width: 430,
+  } as unknown as ViewStyle,
   greetWordmark: {
     color: colors.blue,
     fontFamily: fonts.mono,
@@ -501,11 +729,17 @@ const styles = StyleSheet.create({
   greetTitle: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 42,
     fontWeight: '300',
-    letterSpacing: -0.84,
-    lineHeight: 44.52,
+    letterSpacing: 0,
     textAlign: 'center',
+  },
+  greetTitlePhone: {
+    fontSize: 40,
+    lineHeight: 42.4,
+  },
+  greetTitleDesktop: {
+    fontSize: 48,
+    lineHeight: 51,
   },
   greetTitleItalic: {
     fontStyle: 'italic',
@@ -518,11 +752,16 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 24,
     marginTop: 18,
-    maxWidth: 300,
+    maxWidth: 312,
     textAlign: 'center',
   },
   greetActions: {
     alignItems: 'center',
+  },
+  greetActionsPhone: {
+    marginTop: 128,
+  },
+  greetActionsDesktop: {
     marginTop: 'auto',
   },
   greetMic: {
@@ -540,6 +779,10 @@ const styles = StyleSheet.create({
     right: -18,
     top: -18,
   } as unknown as ViewStyle,
+  greetHazeLive: {
+    opacity: 1,
+    transform: [{ scale: 1.08 }],
+  },
   greetRing: {
     borderColor: '#cdd9e5',
     borderRadius: 58,
@@ -549,6 +792,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  greetRingLive: {
+    borderColor: '#8fb5d4',
+    borderWidth: 2,
+  },
+  greetLiveRing: {
+    borderColor: 'rgba(143,181,212,.32)',
+    borderRadius: 68,
+    borderWidth: 1,
+    bottom: -10,
+    left: -10,
+    position: 'absolute',
+    right: -10,
+    top: -10,
   },
   greetCore: {
     alignItems: 'center',
@@ -562,25 +819,34 @@ const styles = StyleSheet.create({
     right: 13,
     top: 13,
   } as unknown as ViewStyle,
-  greetHint: {
-    color: '#8a939e',
-    fontFamily: fonts.serif,
-    fontSize: 15,
-    fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 15,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  emailLink: {
-    marginTop: 16,
-  },
-  emailLinkText: {
-    color: colors.blue,
+  greetCoreLive: {
+    backgroundColor: '#263140',
+    boxShadow: '0 18px 42px rgba(74,110,143,.34)',
+  } as unknown as ViewStyle,
+  recordingMessage: {
+    color: '#6b7480',
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
-    textDecorationLine: 'underline',
+    lineHeight: 18,
+    marginTop: 16,
+    maxWidth: 260,
+    minHeight: 18,
+    textAlign: 'center',
+  },
+  emailLink: {
+    marginTop: 24,
+  },
+  emailLinkDisabled: {
+    opacity: 0.44,
+    pointerEvents: 'none',
+  } as ViewStyle,
+  emailLinkText: {
+    color: colors.blue,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 20,
   },
   privacyLine: {
     color: '#a6a092',
@@ -589,7 +855,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 1.44,
     lineHeight: 12,
-    marginTop: 16,
+    marginTop: 18,
     textAlign: 'center',
   },
   envelope: {
@@ -666,7 +932,6 @@ const styles = StyleSheet.create({
   },
   micStem: {
     height: 7,
-    marginTop: 0,
     width: 1.6,
   },
 });
