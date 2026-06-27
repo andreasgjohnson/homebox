@@ -68,10 +68,12 @@ export function StoreyHero() {
 
   useEffect(() => {
     clearTimers();
-    setPhase(prefersReducedMotion ? 'greet' : 'night');
-    setVisibleWords(prefersReducedMotion ? passageWords.length : 0);
+    const shouldSkipIntro = prefersReducedMotion && !isPhone;
 
-    if (prefersReducedMotion) {
+    setPhase(shouldSkipIntro ? 'greet' : 'night');
+    setVisibleWords(shouldSkipIntro ? passageWords.length : 0);
+
+    if (shouldSkipIntro) {
       return clearTimers;
     }
 
@@ -96,7 +98,7 @@ export function StoreyHero() {
 
     timersRef.current = [wordTimer, bloomTimer, greetTimer, doneTimer];
     return clearTimers;
-  }, [prefersReducedMotion, replayKey]);
+  }, [isPhone, prefersReducedMotion, replayKey]);
 
   const stageStyle = useMemo(
     () => [styles.stage, phase === 'greet' && styles.stageDawn],
@@ -199,7 +201,7 @@ export function StoreyHero() {
             </Text>
           </View>
 
-          <View style={styles.greetActions}>
+          <View style={[styles.greetActions, isPhone ? styles.greetActionsPhone : styles.greetActionsDesktop]}>
             <Pressable
               accessibilityLabel="Begin with voice"
               accessibilityRole="button"
@@ -212,7 +214,6 @@ export function StoreyHero() {
                 <HeroMicIcon color="#cdd9e5" />
               </View>
             </Pressable>
-            <Text style={styles.greetHint}>Press, and say hello.</Text>
             <Pressable
               accessibilityLabel="Use email instead"
               accessibilityRole="button"
@@ -549,9 +550,9 @@ const styles = StyleSheet.create({
     top: 0,
   } as unknown as ViewStyle,
   greetContentPhone: {
-    paddingBottom: 56,
+    paddingBottom: 44,
     paddingHorizontal: 40,
-    paddingTop: 104,
+    paddingTop: 86,
   },
   greetContentDesktop: {
     left: '50%',
@@ -582,8 +583,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   greetTitlePhone: {
-    fontSize: 42,
-    lineHeight: 44.52,
+    fontSize: 40,
+    lineHeight: 42.4,
   },
   greetTitleDesktop: {
     fontSize: 48,
@@ -600,11 +601,16 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 24,
     marginTop: 18,
-    maxWidth: 300,
+    maxWidth: 312,
     textAlign: 'center',
   },
   greetActions: {
     alignItems: 'center',
+  },
+  greetActionsPhone: {
+    marginTop: 128,
+  },
+  greetActionsDesktop: {
     marginTop: 'auto',
   },
   greetMic: {
@@ -644,18 +650,8 @@ const styles = StyleSheet.create({
     right: 13,
     top: 13,
   } as unknown as ViewStyle,
-  greetHint: {
-    color: '#8a939e',
-    fontFamily: fonts.serif,
-    fontSize: 15,
-    fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 15,
-    marginTop: 16,
-    textAlign: 'center',
-  },
   emailLink: {
-    marginTop: 16,
+    marginTop: 24,
   },
   emailLinkText: {
     color: colors.blue,
@@ -671,7 +667,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 1.44,
     lineHeight: 12,
-    marginTop: 16,
+    marginTop: 18,
     textAlign: 'center',
   },
   envelope: {

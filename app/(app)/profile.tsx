@@ -22,6 +22,7 @@ import {
   uploadProfilePhoto,
 } from '@/lib/profilePhotos';
 import { getProfile, updateProfileName } from '@/lib/profiles';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts, radii, typography } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -183,7 +185,14 @@ export default function ProfileScreen() {
     setIsUploadingPhoto(false);
   }
 
-  const canSave = !isLoading && !isSaving && !isUploadingPhoto && Boolean(firstName.trim() || lastName.trim());
+  async function signOut() {
+    setIsSigningOut(true);
+    await supabase.auth.signOut();
+    setIsSigningOut(false);
+  }
+
+  const canSave =
+    !isLoading && !isSaving && !isSigningOut && !isUploadingPhoto && Boolean(firstName.trim() || lastName.trim());
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -306,6 +315,23 @@ export default function ProfileScreen() {
                     <ActivityIndicator color={colors.white} />
                   ) : (
                     <Text style={styles.primaryButtonText}>Save profile</Text>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSigningOut || isSaving || isUploadingPhoto}
+                  onPress={() => void signOut()}
+                  style={({ pressed }) => [
+                    styles.logoutButton,
+                    (isSigningOut || isSaving || isUploadingPhoto) && styles.buttonDisabled,
+                    pressed && styles.buttonPressed,
+                  ]}
+                >
+                  {isSigningOut ? (
+                    <ActivityIndicator color={colors.muted} />
+                  ) : (
+                    <Text style={styles.logoutButtonText}>Log out</Text>
                   )}
                 </Pressable>
               </View>
@@ -518,6 +544,20 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '700',
+  },
+  logoutButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  logoutButtonText: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   buttonPressed: {
     opacity: 0.65,
