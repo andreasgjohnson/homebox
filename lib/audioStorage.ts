@@ -12,12 +12,12 @@ export function isUploadedMemoryAudioPath(uriOrPath: string) {
   return !uriOrPath.startsWith('blob:') && !uriOrPath.startsWith('file:') && !uriOrPath.startsWith('http');
 }
 
-export async function uploadMemoryAudio(audioUri: string, audioPath: string) {
+export async function uploadMemoryAudio(audioUri: string, audioPath: string, contentType = getRecordingContentType()) {
   const audioBody = await getAudioArrayBuffer(audioUri);
 
   return supabase.storage.from(MEMORY_AUDIO_BUCKET).upload(audioPath, audioBody, {
     cacheControl: '3600',
-    contentType: getRecordingContentType(),
+    contentType,
     upsert: true,
   });
 }

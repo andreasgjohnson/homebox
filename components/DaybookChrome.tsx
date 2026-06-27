@@ -1,7 +1,16 @@
 import { type Href, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { colors, fonts, radii } from '@/lib/theme';
 
@@ -36,6 +45,8 @@ export function DaybookChrome({
 }: DaybookChromeProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
 
   function navigate(href: Href) {
     setIsDrawerOpen(false);
@@ -44,8 +55,12 @@ export function DaybookChrome({
 
   return (
     <View style={styles.shell}>
-      <View style={styles.topBar}>
-        <MenuButton onPress={() => setIsDrawerOpen(true)} />
+      <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
+        {isPhone ? (
+          <View style={styles.mobileHeaderSpacer} />
+        ) : (
+          <MenuButton onPress={() => setIsDrawerOpen(true)} />
+        )}
         <StoreyboxWordmark />
         <ProfileAvatar
           avatarUrl={avatarUrl}
@@ -56,18 +71,22 @@ export function DaybookChrome({
 
       {children}
 
-      <StoreyboxDrawer
-        isOpen={isDrawerOpen}
-        isSigningOut={isSigningOut}
-        memoryCount={memoryCount}
-        onClose={() => setIsDrawerOpen(false)}
-        onNavigate={navigate}
-        onSignOut={onSignOut}
-        returningThemes={returningThemes}
-        avatarUrl={avatarUrl}
-        userInitial={userInitial}
-        userName={userName}
-      />
+      {isPhone ? (
+        <BottomTabBar activeTab="home" />
+      ) : (
+        <StoreyboxDrawer
+          isOpen={isDrawerOpen}
+          isSigningOut={isSigningOut}
+          memoryCount={memoryCount}
+          onClose={() => setIsDrawerOpen(false)}
+          onNavigate={navigate}
+          onSignOut={onSignOut}
+          returningThemes={returningThemes}
+          avatarUrl={avatarUrl}
+          userInitial={userInitial}
+          userName={userName}
+        />
+      )}
     </View>
   );
 }
@@ -213,6 +232,43 @@ export function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+export function BottomTabBar({ activeTab }: { activeTab: 'home' | 'memories' | 'you' }) {
+  const router = useRouter();
+
+  return (
+    <View style={styles.tabBar}>
+      <Pressable onPress={() => router.replace('/' as Href)} style={styles.tabSlot}>
+        <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
+        <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>Home</Text>
+      </Pressable>
+      <Pressable onPress={() => router.replace('/memories' as Href)} style={styles.tabSlot}>
+        <Text style={[styles.tabIcon, activeTab === 'memories' && styles.tabActive]}>▱</Text>
+        <Text style={[styles.tabLabel, activeTab === 'memories' && styles.tabActive]}>Memories</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('/memories/new' as Href)} style={styles.recordTabSlot}>
+        <View style={styles.recordTabCircle}>
+          <SmallMicIcon />
+        </View>
+        <Text style={styles.recordTabLabel}>Record</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('/profile' as Href)} style={styles.tabSlot}>
+        <Text style={[styles.tabIcon, activeTab === 'you' && styles.tabActive]}>◌</Text>
+        <Text style={[styles.tabLabel, activeTab === 'you' && styles.tabActive]}>You</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function SmallMicIcon() {
+  return (
+    <View style={styles.smallMicWrap}>
+      <View style={styles.smallMicBody} />
+      <View style={styles.smallMicArc} />
+      <View style={styles.smallMicStem} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   shell: {
     backgroundColor: colors.background,
@@ -228,6 +284,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 32,
     paddingVertical: 22,
+  },
+  topBarPhone: {
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+  },
+  mobileHeaderSpacer: {
+    width: 32,
   },
   menuButton: {
     alignItems: 'center',
@@ -426,5 +489,96 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '600',
+  },
+  tabBar: {
+    alignItems: 'flex-start',
+    backgroundColor: '#F1EDE4',
+    borderTopColor: colors.borderStrong,
+    borderTopWidth: 1,
+    bottom: 0,
+    flexDirection: 'row',
+    height: 122,
+    justifyContent: 'space-around',
+    left: 0,
+    paddingHorizontal: 16,
+    paddingTop: 13,
+    position: 'absolute',
+    right: 0,
+  },
+  tabSlot: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 4,
+    paddingTop: 8,
+  },
+  tabIcon: {
+    color: '#A6A092',
+    fontFamily: fonts.sans,
+    fontSize: 23,
+    fontWeight: '600',
+    lineHeight: 24,
+  },
+  tabLabel: {
+    color: '#A6A092',
+    fontFamily: fonts.sans,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 12,
+  },
+  tabActive: {
+    color: colors.blue,
+  },
+  recordTabSlot: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 6,
+  },
+  recordTabCircle: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 29,
+    boxShadow: '0 10px 24px rgba(30,38,48,.3)',
+    height: 58,
+    justifyContent: 'center',
+    marginTop: -24,
+    width: 58,
+  },
+  recordTabLabel: {
+    color: '#A6A092',
+    fontFamily: fonts.sans,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 12,
+  },
+  smallMicWrap: {
+    alignItems: 'center',
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  smallMicBody: {
+    borderColor: '#CDD9E5',
+    borderRadius: 5,
+    borderWidth: 1.5,
+    height: 13,
+    width: 8,
+  },
+  smallMicArc: {
+    borderBottomColor: '#CDD9E5',
+    borderBottomWidth: 1.5,
+    borderLeftColor: '#CDD9E5',
+    borderLeftWidth: 1.5,
+    borderRightColor: '#CDD9E5',
+    borderRightWidth: 1.5,
+    borderTopWidth: 0,
+    height: 9,
+    marginTop: -5,
+    width: 17,
+  },
+  smallMicStem: {
+    backgroundColor: '#CDD9E5',
+    height: 5,
+    marginTop: -1,
+    width: 1.5,
   },
 });

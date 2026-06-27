@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -33,6 +34,8 @@ export default function PersonScreen() {
   const { name } = useLocalSearchParams<{ name?: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const [memories, setMemories] = useState<MemoryListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -70,8 +73,8 @@ export default function PersonScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.topBar}>
+      <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
+        <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
           <Pressable onPress={() => router.push('/memories?lens=people' as Href)} style={styles.backLink}>
             <Text style={styles.backChevron}>‹</Text>
             <Text style={styles.backText}>Memories</Text>
@@ -80,13 +83,13 @@ export default function PersonScreen() {
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 
-        <View style={styles.header}>
-          <View style={[styles.glow, glowStyle]} />
-          <View style={styles.avatar}>
+        <View style={[styles.header, isPhone && styles.headerPhone]}>
+          <View style={[styles.glow, isPhone && styles.glowPhone, glowStyle]} />
+          <View style={[styles.avatar, isPhone && styles.avatarPhone]}>
             <Text style={styles.avatarInitial}>{personName.slice(0, 1).toUpperCase()}</Text>
           </View>
           <Text style={styles.eyebrow}>PERSON · {visibleMoments.length} MOMENTS</Text>
-          <Text style={styles.title}>{personName}</Text>
+          <Text style={[styles.title, isPhone && styles.titlePhone]}>{personName}</Text>
         </View>
 
         {isLoading ? (
@@ -123,10 +126,12 @@ export default function PersonScreen() {
 }
 
 function TrendPanel({ personName }: { personName: string }) {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const bars = [13, 26, 13, 26, 39, 52];
 
   return (
-    <View style={[styles.trendPanel, washStyle]}>
+    <View style={[styles.trendPanel, isPhone && styles.trendPanelPhone, washStyle]}>
       <View style={styles.trendHead}>
         <Text style={styles.trendLabel}>HOW OFTEN YOU REFLECT ON {personName.toUpperCase()}</Text>
         <Text style={styles.trendRange}>Past 6 months</Text>
@@ -157,10 +162,12 @@ function TrendPanel({ personName }: { personName: string }) {
 }
 
 function TexturePanel() {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 700;
   const textures = ['Reflective', 'Tender', 'Reflective', 'Warm', 'Tender', 'Curious'];
 
   return (
-    <View style={styles.texturePanel}>
+    <View style={[styles.texturePanel, isPhone && styles.texturePanelPhone]}>
       <Text style={styles.textureLabel}>HOW THESE MEMORIES HAVE FELT</Text>
       <View style={styles.textureMonths}>
         {textures.map((texture, index) => (
@@ -234,6 +241,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     width: '100%',
   },
+  containerPhone: {
+    maxWidth: undefined,
+    paddingBottom: 44,
+    paddingHorizontal: 24,
+  },
   topBar: {
     alignItems: 'center',
     borderBottomColor: colors.border,
@@ -243,6 +255,11 @@ const styles = StyleSheet.create({
     marginHorizontal: -40,
     paddingHorizontal: 40,
     paddingVertical: 22,
+  },
+  topBarPhone: {
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
   },
   backLink: {
     alignItems: 'center',
@@ -279,6 +296,9 @@ const styles = StyleSheet.create({
     marginTop: 46,
     position: 'relative',
   },
+  headerPhone: {
+    marginTop: 34,
+  },
   glow: {
     height: 240,
     left: '50%',
@@ -287,6 +307,11 @@ const styles = StyleSheet.create({
     top: '64%',
     transform: [{ translateX: -220 }, { translateY: -120 }],
     width: 440,
+  },
+  glowPhone: {
+    height: 200,
+    transform: [{ translateX: -180 }, { translateY: -100 }],
+    width: 360,
   },
   avatar: {
     alignItems: 'center',
@@ -297,6 +322,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     position: 'relative',
     width: 80,
+  },
+  avatarPhone: {
+    borderRadius: 36,
+    height: 72,
+    width: 72,
   },
   avatarInitial: {
     color: colors.background,
@@ -321,6 +351,10 @@ const styles = StyleSheet.create({
     lineHeight: 59,
     position: 'relative',
   },
+  titlePhone: {
+    fontSize: 46,
+    lineHeight: 49,
+  },
   trendPanel: {
     backgroundColor: '#EAF1F7',
     borderColor: '#DDE8F0',
@@ -329,6 +363,10 @@ const styles = StyleSheet.create({
     marginTop: 40,
     paddingHorizontal: 30,
     paddingVertical: 26,
+  },
+  trendPanelPhone: {
+    paddingHorizontal: 22,
+    paddingVertical: 22,
   },
   trendHead: {
     alignItems: 'baseline',
@@ -394,6 +432,10 @@ const styles = StyleSheet.create({
     marginTop: 22,
     paddingHorizontal: 30,
     paddingVertical: 24,
+  },
+  texturePanelPhone: {
+    paddingHorizontal: 22,
+    paddingVertical: 22,
   },
   textureLabel: {
     color: '#8A939E',
