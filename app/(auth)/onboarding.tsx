@@ -13,9 +13,7 @@ import {
 import {
   BackChevron,
   HairlineEmailField,
-  PasskeyToggle,
   PrimaryButton,
-  RecapCard,
   SoftGlow,
   StepProgress,
   StoreyboxAuthWordmark,
@@ -25,20 +23,18 @@ import { colors, fonts } from '@/lib/theme';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
-  const [usePasskey, setUsePasskey] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForEmail, setIsWaitingForEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const cleanEmail = email.trim().toLowerCase();
-  const stepTag = step === 1 ? 'SO YOU CAN RETURN' : 'READY';
+  const stepTag = isWaitingForEmail ? 'CHECK YOUR EMAIL' : 'SO YOU CAN RETURN';
 
   function goBack() {
     setMessage(null);
 
-    if (step === 2) {
-      setStep(1);
+    if (isWaitingForEmail) {
+      setIsWaitingForEmail(false);
       return;
     }
 
@@ -52,11 +48,11 @@ export default function OnboardingScreen() {
 
   async function next() {
     setMessage(null);
+    await finishAccountStep();
+  }
 
-    if (step === 2) {
-      setMessage('Open the private link from your email to enter Storeybox.');
-      return;
-    }
+  async function finishAccountStep() {
+    const cleanEmail = email.trim().toLowerCase();
 
     if (!isValidEmail(cleanEmail)) {
       setMessage('Add a valid email so your box is always yours to find.');
@@ -64,6 +60,7 @@ export default function OnboardingScreen() {
     }
 
     setIsSubmitting(true);
+    setMessage(null);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
@@ -79,79 +76,75 @@ export default function OnboardingScreen() {
       return;
     }
 
-    setStep(2);
+    setIsWaitingForEmail(true);
   }
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={goBack} style={styles.backButton}>
+          <Pressable onPress={goBack} style={[styles.backButton, !isWaitingForEmail && styles.hiddenBack]}>
             <BackChevron />
             <Text style={styles.backText}>Back</Text>
           </Pressable>
           <StoreyboxAuthWordmark />
           <Text style={styles.stepTag}>{stepTag}</Text>
         </View>
-        <StepProgress step={step} />
+        <StepProgress step={isWaitingForEmail ? 2 : 1} />
       </View>
 
       <ScrollView contentContainerStyle={styles.contentScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          {step === 1 ? (
+          {!isWaitingForEmail ? (
             <View>
               <Text style={styles.eyebrow}>SO YOU CAN RETURN</Text>
               <Text style={styles.title}>Where should we keep your box?</Text>
               <Text style={styles.body}>
-                Your email is the private key back in. Face ID can make returning quieter on this
-                device, but the email link stays in charge.
+                This email is how you sign back in — the one thing that's truly your key. Once you
+                verify it, your hello can become the first private memory in your archive.
               </Text>
 
               <View style={styles.emailBlock}>
                 <HairlineEmailField email={email} onChangeText={setEmail} />
               </View>
-
-              <View style={styles.passkeyRow}>
-                <View style={styles.passkeyText}>
-                  <Text style={styles.passkeyTitle}>Face ID unlock</Text>
-                  <Text style={styles.passkeyBody}>Use this device to open Storeybox faster.</Text>
-                </View>
-                <PasskeyToggle enabled={usePasskey} onToggle={() => setUsePasskey((current) => !current)} />
-              </View>
             </View>
-          ) : (
+          ) : null}
+
+          {isWaitingForEmail ? (
             <View style={styles.confirm}>
               <SoftGlow style={styles.confirmGlow} />
-              <Text style={styles.eyebrow}>YOUR BOX IS READY</Text>
-              <Text style={styles.confirmTitle}>Two quiet things, doing two different jobs.</Text>
+              <Text style={styles.eyebrow}>WAITING FOR EMAIL</Text>
+              <Text style={styles.confirmTitle}>Your private link is on its way.</Text>
               <Text style={styles.confirmBody}>
-                We sent your private link. Open it from your email when you are ready to enter your
-                Storeybox.
+                Open the link from this browser. Once Supabase confirms it is you, Storeybox will
+                prepare your archive and bring you in automatically.
               </Text>
 
-              <View style={styles.recapList}>
-                <RecapCard badge="@" title="Email">
-                  {cleanEmail || 'You can add one later from settings.'}
-                </RecapCard>
-                <RecapCard badge={usePasskey ? 'ON' : 'OFF'} badgeMuted={!usePasskey} title="Face ID unlock">
-                  {usePasskey ? 'Ready on this device after sign-in.' : 'Skipped for now.'}
-                </RecapCard>
+              <View style={styles.waitingCard}>
+                <Text style={styles.waitingCardTitle}>{email.trim().toLowerCase()}</Text>
+                <Text style={styles.waitingCardText}>
+                  Nothing has been uploaded yet. Your recording stays local until sign-in succeeds.
+                </Text>
               </View>
 
               <Text style={styles.confirmFoot}>NOTHING IS SHARED · YOUR STORY STAYS YOURS</Text>
             </View>
-          )}
+          ) : null}
 
           {message ? <Text style={styles.message}>{message}</Text> : null}
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable disabled={step === 2 || isSubmitting} onPress={skip} style={step === 2 && styles.hiddenBack}>
+        <Pressable
+          disabled={isWaitingForEmail || isSubmitting}
+          onPress={skip}
+          style={isWaitingForEmail && styles.hiddenBack}
+        >
           <Text style={styles.skipText}>Skip for now</Text>
         </Pressable>
-        <PrimaryButton isLoading={isSubmitting} onPress={() => void next()}>
-          {step === 1 ? 'Send private link' : 'Enter Storeybox'}
+        <PrimaryButton disabled={isWaitingForEmail} isLoading={isSubmitting} onPress={() => void next()}>
+          {isWaitingForEmail ? 'Link sent' : 'Send private link'}
         </PrimaryButton>
       </View>
     </View>
@@ -254,37 +247,6 @@ const styles = StyleSheet.create({
   emailBlock: {
     marginTop: 30,
   },
-  passkeyRow: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceWarm,
-    borderColor: '#e8e1d2',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 18,
-    justifyContent: 'space-between',
-    marginTop: 26,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  passkeyText: {
-    flex: 1,
-  },
-  passkeyTitle: {
-    color: colors.ink,
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  passkeyBody: {
-    color: '#8a939e',
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 18,
-    marginTop: 4,
-  },
   confirm: {
     alignItems: 'center',
     position: 'relative',
@@ -315,10 +277,30 @@ const styles = StyleSheet.create({
     position: 'relative',
     textAlign: 'center',
   },
-  recapList: {
-    gap: 12,
+  waitingCard: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: '#e8e1d2',
+    borderRadius: 16,
+    borderWidth: 1,
     marginTop: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 22,
     width: '100%',
+  },
+  waitingCardTitle: {
+    color: colors.ink,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  waitingCardText: {
+    color: '#8a939e',
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 19.5,
+    marginTop: 8,
   },
   confirmFoot: {
     color: '#b0a894',
