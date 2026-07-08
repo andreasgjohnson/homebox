@@ -9,9 +9,9 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type ViewStyle,
 } from 'react-native';
 
+import { BoxPresenceCard } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
 import {
   buildArchiveMoments,
@@ -21,76 +21,66 @@ import {
   getThemeAggregates,
   toSlug,
 } from '@/lib/archiveView';
-import { listMemories, type MemoryListItem } from '@/lib/memories';
+import { defaultBox } from '@/lib/box';
 import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
+import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
-
-const glowStyle = {
-  backgroundImage: 'radial-gradient(ellipse,#c7dcec,transparent 68%)',
-} as unknown as ViewStyle;
-
-const recordGlowStyle = {
-  backgroundImage: 'radial-gradient(circle,#bcd2e6,transparent 68%)',
-} as unknown as ViewStyle;
-
-const analyticsWashStyle = {
-  backgroundImage: 'linear-gradient(180deg,#eaf1f7,#eef3f7)',
-} as unknown as ViewStyle;
 
 export default function HomeScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isPhone = width < 700;
-  const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
-  const [isLoadingMemories, setIsLoadingMemories] = useState(true);
+  const [isLoadingStoreys, setIsLoadingStoreys] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadMemories = useCallback(async () => {
+  const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
-    setIsLoadingMemories(true);
+    setIsLoadingStoreys(true);
     setErrorMessage(null);
 
     const [{ data, error }, { data: profile }] = await Promise.all([
-      listMemories(session.user.id),
+      listStoreys(session.user.id),
       getProfile(session.user.id),
     ]);
 
     if (error) {
       setErrorMessage(error.message);
     } else {
-      setMemories(data ?? []);
+      setStoreysFromCloud(data ?? []);
     }
 
     setProfileName(getProfileDisplayName(profile ?? null));
     setProfileAvatarUrl(await getProfilePhotoPreviewUrl(profile?.avatar_url));
-    setIsLoadingMemories(false);
+    setIsLoadingStoreys(false);
   }, [session?.user.id]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadMemories();
-    }, [loadMemories]),
+      void loadStoreys();
+    }, [loadStoreys]),
   );
 
   const firstName = getFirstName(profileName || session?.user.email);
-  const moments = useMemo(() => buildArchiveMoments(memories), [memories]);
-  const themes = useMemo(() => getThemeAggregates(moments), [moments]);
-  const people = useMemo(() => getPersonAggregates(moments), [moments]);
-  const recentMoments = moments.slice(0, 3);
+  const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
+  const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
+  const people = useMemo(() => getPersonAggregates(storeys), [storeys]);
+  const recentStoreys = storeys.slice(0, 3);
+  const returnStorey = recentStoreys[0];
   const topTheme = themes[0];
   const topPerson = people[0];
-  const topTexture = moments[0]?.texture ?? 'Reflective';
-  const insight = getDashboardInsight(themes);
+  const topTexture = storeys[0]?.texture ?? 'Reflective';
+  const observation = getDashboardInsight(themes).replace('\n', ' ');
 
   async function signOut() {
     setIsSigningOut(true);
@@ -103,45 +93,45 @@ export default function HomeScreen() {
       <DaybookChrome
         avatarUrl={profileAvatarUrl}
         isSigningOut={isSigningOut}
-        memoryCount={memories.length}
         onSignOut={() => void signOut()}
         returningThemes={themes.slice(0, 4).map((theme) => theme.name)}
+        storeyCount={storeysFromCloud.length}
         userInitial={firstName.slice(0, 1).toUpperCase()}
         userName={profileName || session?.user.email}
       >
         <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
-          <View style={[styles.hero, isPhone && styles.heroPhone]}>
+          <View style={styles.greetingWrap}>
             <Text style={styles.greeting}>Good {getDayPart()}, {firstName}.</Text>
-            <View style={styles.insightWrap}>
-              <View style={[styles.heroGlow, isPhone && styles.heroGlowPhone, glowStyle]} />
-              <Text style={[styles.insight, isPhone && styles.insightPhone]}>{insight}</Text>
-            </View>
-            <Text style={[styles.basis, isPhone && styles.basisPhone]}>
-              A reflection drawn from your recent recordings.
-            </Text>
           </View>
 
-          <View style={[styles.recordWrap, isPhone && styles.recordWrapPhone]}>
+          <BoxPresenceCard box={defaultBox} />
+
+          <View style={styles.section}>
+            <Text style={styles.eyebrow}>FOR TONIGHT</Text>
             <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/memories/new' as Href)}
-              style={({ pressed }) => [
-                styles.recordTarget,
-                isPhone && styles.recordTargetPhone,
-                pressed && styles.pressed,
-              ]}
+              disabled={!returnStorey}
+              onPress={() =>
+                returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
+              }
+              style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
             >
-              <View style={[styles.recordGlow, isPhone && styles.recordGlowPhone, recordGlowStyle]} />
-              <View style={[styles.recordRing, isPhone && styles.recordRingPhone]} />
-              <View style={[styles.recordCore, isPhone && styles.recordCorePhone]}>
-                <MicIcon />
-              </View>
+              <View style={styles.returnHairline} />
+              <Text style={styles.returnProvenance}>
+                {returnStorey
+                  ? `You left this with ${defaultBox.name}.`
+                  : 'Your Box will place something here when the archive has a little more to hold.'}
+              </Text>
+              <Text style={styles.returnTitle}>
+                {returnStorey?.title ?? 'Your first Storey will return here.'}
+              </Text>
+              <Text style={styles.returnQuote}>
+                "{returnStorey?.excerpt ?? 'The app is listening for what the Box brings home.'}"
+              </Text>
+              {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
             </Pressable>
-            <Text style={styles.recordTitle}>Hold to remember</Text>
-            <Text style={styles.recordPrompt}>What made today meaningful?</Text>
           </View>
 
-          {isLoadingMemories ? (
+          {isLoadingStoreys ? (
             <View style={styles.feedback}>
               <ActivityIndicator color={colors.ink} />
               <Text style={styles.feedbackText}>Opening your archive...</Text>
@@ -154,84 +144,105 @@ export default function HomeScreen() {
             </View>
           ) : null}
 
-          <View style={styles.sectionLabelWrap}>
-            <Text style={styles.sectionLabel}>WHAT YOU'VE BEEN HOLDING ONTO</Text>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.eyebrow}>RECENT STOREYS</Text>
+              <Pressable onPress={() => router.push('/archive' as Href)}>
+                <Text style={styles.allLink}>All →</Text>
+              </Pressable>
+            </View>
+
+            {recentStoreys.length ? (
+              <View style={styles.storeyList}>
+                {recentStoreys.map((storey) => (
+                  <Pressable
+                    key={storey.id}
+                    onPress={() => router.push(`/archive/${storey.id}` as Href)}
+                    style={({ pressed }) => [styles.storeyRow, pressed && styles.pressed]}
+                  >
+                    <View style={[styles.textureDot, { backgroundColor: storey.textureColor }]} />
+                    <View style={styles.storeyCopy}>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.stamp}>{storey.stamp}</Text>
+                        <View style={styles.metaDot} />
+                        <Text style={styles.textureLabel}>{storey.texture}</Text>
+                      </View>
+                      <Text numberOfLines={1} style={styles.storeyTitle}>
+                        {storey.title}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.storeyExcerpt}>
+                        "{storey.excerpt}"
+                      </Text>
+                      <Text style={styles.provenance}>KEPT AT HOME · Captured by {defaultBox.name}</Text>
+                    </View>
+                    <View style={styles.storeySide}>
+                      <Text style={styles.duration}>2:14</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Your archive is waiting at home.</Text>
+                <Text style={styles.emptyText}>
+                  Press your Box when something is worth keeping. Storeys will appear here after
+                  they sync.
+                </Text>
+              </View>
+            )}
           </View>
 
-          {recentMoments.length ? (
-            <View style={styles.spineList}>
-              {recentMoments.map((moment) => (
-                <Pressable
-                  key={moment.id}
-                  onPress={() => router.push(`/memories/${moment.id}` as Href)}
-                  style={({ pressed }) => [styles.spineItem, pressed && styles.pressed]}
-                >
-                  <View style={[styles.node, { backgroundColor: moment.textureColor }]} />
-                  <View style={styles.stampRow}>
-                    <View style={styles.stampDot} />
-                    <Text style={styles.stamp}>{moment.stamp}</Text>
-                  </View>
-                  <Text style={styles.momentTitle}>{moment.title}</Text>
-                  <Text style={styles.excerpt}>“{moment.excerpt}”</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Your first memory belongs here.</Text>
-              <Text style={styles.emptyText}>
-                Start with a small detail from today. Storeybox will turn the recording into a
-                transcript, summary, and quiet pattern for your archive.
-              </Text>
-            </View>
-          )}
+          <View style={styles.observationBand}>
+            <Text style={styles.observation}>{observation}</Text>
+          </View>
 
-          <Pressable onPress={() => router.push('/memories' as Href)} style={styles.allMemories}>
-            <Text style={styles.allMemoriesText}>All your memories</Text>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
-
-          <View style={[styles.analyticsBand, isPhone && styles.analyticsBandPhone, analyticsWashStyle]}>
-            <Text style={styles.analyticsLabel}>RECENT INSIGHTS · LAST 7 DAYS</Text>
+          <View style={styles.analyticsBand}>
+            <View style={styles.analyticsHead}>
+              <Text style={styles.analyticsLabel}>RECENT INSIGHTS</Text>
+              <Text style={styles.analyticsRange}>Last 7 days</Text>
+            </View>
             <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
               <Pressable
                 onPress={() => router.push(`/themes/${toSlug(topTheme?.name ?? 'Home')}` as Href)}
-                style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}
+                style={styles.analyticsColumn}
               >
                 <Text style={styles.analyticsKicker}>TOP THEME</Text>
                 <Text style={styles.analyticsValue}>{topTheme?.name ?? 'Home'}</Text>
-                <Text style={styles.analyticsMeta}>{topTheme?.count ?? 0} moments · +2</Text>
+                <Text style={styles.analyticsMeta}>{topTheme?.count ?? 0} Storeys · +2 this week</Text>
                 <View style={styles.freqBars}>
                   <View style={[styles.freqBar, { backgroundColor: colors.blue, flex: 9 }]} />
                   <View style={[styles.freqBar, { backgroundColor: '#A9C0D4', flex: 7 }]} />
                   <View style={[styles.freqBar, { backgroundColor: '#CDDDEA', flex: 5 }]} />
                 </View>
               </Pressable>
-              <View style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}>
+              <View style={styles.analyticsColumn}>
                 <Text style={styles.analyticsKicker}>TEXTURE</Text>
                 <Text style={styles.analyticsValue}>{topTexture}</Text>
                 <Text style={styles.analyticsMeta}>Calmer than last week</Text>
                 <View style={styles.textureDots}>
-                  <View style={[styles.textureDot, { backgroundColor: getTextureColor(topTexture) }]} />
-                  <View style={[styles.textureDot, { backgroundColor: getTextureColor('Hopeful') }]} />
-                  <View style={[styles.textureDot, { backgroundColor: getTextureColor('Tender') }]} />
+                  {[topTexture, 'Hopeful', 'Tender'].map((texture) => (
+                    <View
+                      key={texture}
+                      style={[styles.analyticsDot, { backgroundColor: getTextureColor(texture) }]}
+                    />
+                  ))}
                 </View>
               </View>
               <Pressable
                 onPress={() => router.push(`/people/${toSlug(topPerson?.name ?? 'Dad')}` as Href)}
-                style={[styles.analyticsColumn, isPhone && styles.analyticsColumnPhone]}
+                style={styles.analyticsColumn}
               >
                 <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
                 <Text style={styles.analyticsValue}>{topPerson?.name ?? 'Dad'}</Text>
-                <Text style={styles.analyticsMeta}>{topPerson?.count ?? 0}× · more than usual</Text>
+                <Text style={styles.analyticsMeta}>{topPerson?.count ?? 0}× this week</Text>
               </Pressable>
             </View>
             <View style={styles.deepLinks}>
-              <Pressable onPress={() => router.push('/memories?lens=themes' as Href)}>
+              <Pressable onPress={() => router.push('/archive?lens=themes' as Href)}>
                 <Text style={styles.deepLink}>See all themes</Text>
               </Pressable>
               <View style={styles.deepLinkDot} />
-              <Pressable onPress={() => router.push('/memories?lens=people' as Href)}>
+              <Pressable onPress={() => router.push('/archive?lens=people' as Href)}>
                 <Text style={styles.deepLink}>See all people</Text>
               </Pressable>
             </View>
@@ -258,17 +269,6 @@ function getDayPart() {
   return 'evening';
 }
 
-function MicIcon() {
-  return (
-    <View style={styles.micWrap}>
-      <View style={styles.micBody} />
-      <View style={styles.micArc} />
-      <View style={styles.micStem} />
-      <View style={styles.micBase} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: colors.background,
@@ -276,289 +276,252 @@ const styles = StyleSheet.create({
   },
   container: {
     alignSelf: 'center',
-    maxWidth: 680,
-    paddingBottom: 70,
-    paddingHorizontal: 40,
+    maxWidth: 480,
+    paddingBottom: 88,
+    paddingHorizontal: 28,
     width: '100%',
   },
   containerPhone: {
     maxWidth: undefined,
-    paddingBottom: 150,
-    paddingHorizontal: 24,
+    paddingBottom: 96,
   },
-  hero: {
-    alignItems: 'center',
-    marginTop: 46,
-    textAlign: 'center',
-  },
-  heroPhone: {
-    marginTop: 34,
+  greetingWrap: {
+    paddingBottom: 18,
+    paddingTop: 30,
   },
   greeting: {
     color: '#8A939E',
     fontFamily: fonts.serif,
-    fontSize: 14,
-    fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 14,
-    marginBottom: 22,
-  },
-  insightWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  heroGlow: {
-    height: 300,
-    left: '50%',
-    pointerEvents: 'none',
-    position: 'absolute',
-    top: '50%',
-    transform: [{ translateX: -260 }, { translateY: -150 }],
-    width: 520,
-  },
-  heroGlowPhone: {
-    height: 230,
-    transform: [{ translateX: -190 }, { translateY: -115 }],
-    width: 380,
-  },
-  insight: {
-    color: colors.ink,
-    fontFamily: fonts.serif,
-    fontSize: 56,
-    fontWeight: '300',
-    letterSpacing: -0.84,
-    lineHeight: 62.72,
-    position: 'relative',
-    textAlign: 'center',
-  },
-  insightPhone: {
-    fontSize: 34,
-    letterSpacing: 0,
-    lineHeight: 38.08,
-  },
-  basis: {
-    color: colors.muted,
-    fontFamily: fonts.sans,
-    fontSize: 16,
-    fontWeight: '400',
-    lineHeight: 24,
-    marginTop: 22,
-    textAlign: 'center',
-  },
-  basisPhone: {
     fontSize: 15,
-    lineHeight: 22,
-    marginTop: 18,
-  },
-  recordWrap: {
-    alignItems: 'center',
-    marginTop: 48,
-  },
-  recordWrapPhone: {
-    marginTop: 38,
-  },
-  recordTarget: {
-    height: 148,
-    position: 'relative',
-    width: 148,
-  },
-  recordTargetPhone: {
-    height: 116,
-    width: 116,
-  },
-  recordGlow: {
-    borderRadius: 88,
-    bottom: -14,
-    left: -14,
-    position: 'absolute',
-    right: -14,
-    top: -14,
-  },
-  recordGlowPhone: {
-    borderRadius: 72,
-    bottom: -12,
-    left: -12,
-    right: -12,
-    top: -12,
-  },
-  recordRing: {
-    borderColor: '#CDD9E5',
-    borderRadius: 74,
-    borderWidth: 1,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  recordRingPhone: {
-    borderRadius: 58,
-  },
-  recordCore: {
-    alignItems: 'center',
-    backgroundColor: colors.ink,
-    borderRadius: 60,
-    bottom: 14,
-    boxShadow: '0 12px 30px rgba(30,38,48,.28)',
-    justifyContent: 'center',
-    left: 14,
-    position: 'absolute',
-    right: 14,
-    top: 14,
-  },
-  recordCorePhone: {
-    borderRadius: 44,
-    bottom: 12,
-    left: 12,
-    right: 12,
-    top: 12,
-  },
-  micWrap: {
-    alignItems: 'center',
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  micBody: {
-    borderColor: '#CDD9E5',
-    borderRadius: 6,
-    borderWidth: 1.8,
-    height: 18,
-    width: 10,
-  },
-  micArc: {
-    borderBottomColor: '#CDD9E5',
-    borderBottomWidth: 1.8,
-    borderLeftColor: '#CDD9E5',
-    borderLeftWidth: 1.8,
-    borderRightColor: '#CDD9E5',
-    borderRightWidth: 1.8,
-    borderTopColor: 'transparent',
-    borderTopWidth: 0,
-    borderRadius: 12,
-    height: 13,
-    marginTop: -8,
-    width: 22,
-  },
-  micStem: {
-    backgroundColor: '#CDD9E5',
-    height: 7,
-    marginTop: -1,
-    width: 1.8,
-  },
-  micBase: {
-    backgroundColor: '#CDD9E5',
-    borderRadius: 1,
-    height: 1.8,
-    width: 12,
-  },
-  recordTitle: {
-    color: colors.ink,
-    fontFamily: fonts.serif,
-    fontSize: 20,
-    fontWeight: '400',
-    lineHeight: 20,
-    marginTop: 22,
-  },
-  recordPrompt: {
-    color: '#8A939E',
-    fontFamily: fonts.serif,
-    fontSize: 14,
     fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 14,
-    marginTop: 8,
+    fontWeight: '300',
+    lineHeight: 18,
   },
-  sectionLabelWrap: {
-    alignSelf: 'flex-start',
-    borderBottomColor: '#9FB8D0',
-    borderBottomWidth: 2,
-    marginTop: 58,
-    paddingBottom: 6,
+  section: {
+    marginTop: 26,
   },
-  sectionLabel: {
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  eyebrow: {
     color: colors.blue,
     fontFamily: fonts.mono,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2.2,
-    lineHeight: 11,
+    lineHeight: 13,
   },
-  spineList: {
-    borderLeftColor: colors.blueLine,
-    borderLeftWidth: 1.5,
-    marginTop: 16,
-    paddingLeft: 24,
+  allLink: {
+    color: colors.blue,
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    fontWeight: '500',
   },
-  spineItem: {
-    borderBottomColor: '#DDE7EF',
-    borderBottomWidth: 1,
-    paddingVertical: 22,
+  returnShelf: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingHorizontal: 22,
+    paddingVertical: 20,
     position: 'relative',
   },
-  node: {
-    borderRadius: 5,
-    boxShadow: `0 0 0 4px ${colors.background}`,
-    height: 9,
-    left: -29.5,
+  returnHairline: {
+    backgroundColor: colors.blueLine,
+    height: 2,
+    left: 52,
+    opacity: 0.85,
     position: 'absolute',
-    top: 28,
-    width: 9,
+    right: 52,
+    top: 0,
   },
-  stampRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+  returnProvenance: {
+    color: '#9AA1AB',
+    fontFamily: fonts.serif,
+    fontSize: 13,
+    fontStyle: 'italic',
+    fontWeight: '300',
+    lineHeight: 17,
+    marginBottom: 14,
   },
-  stampDot: {
-    backgroundColor: colors.blue,
-    borderRadius: 2.5,
-    height: 5,
-    width: 5,
-  },
-  stamp: {
-    color: colors.blue,
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.66,
-    lineHeight: 11,
-  },
-  momentTitle: {
+  returnTitle: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: '400',
-    lineHeight: 27.6,
-    marginBottom: 6,
+    lineHeight: 25.2,
+    marginBottom: 10,
   },
-  excerpt: {
+  returnQuote: {
     color: colors.muted,
     fontFamily: fonts.serif,
-    fontSize: 15,
+    fontSize: 14,
     fontStyle: 'italic',
     fontWeight: '400',
-    lineHeight: 21.75,
+    lineHeight: 21,
+    marginBottom: 16,
   },
-  allMemories: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 18,
-  },
-  allMemoriesText: {
+  listenBack: {
     color: colors.blue,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
   },
-  arrow: {
-    color: colors.blue,
+  feedback: {
+    alignItems: 'center',
+    marginTop: 28,
+  },
+  feedbackText: {
+    color: colors.muted,
     fontFamily: fonts.sans,
-    fontSize: 24,
+    fontSize: 14,
+    marginTop: 10,
+  },
+  notice: {
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.dangerBorder,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 22,
+    padding: 16,
+  },
+  noticeText: {
+    color: colors.danger,
+    fontFamily: fonts.sans,
+    fontSize: 14,
     lineHeight: 20,
+  },
+  storeyList: {
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  storeyRow: {
+    alignItems: 'flex-start',
+    backgroundColor: colors.surfaceWarm,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 13,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+  },
+  textureDot: {
+    borderRadius: 4,
+    height: 8,
+    marginTop: 5,
+    width: 8,
+  },
+  storeyCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 4,
+  },
+  stamp: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    lineHeight: 10,
+  },
+  metaDot: {
+    backgroundColor: '#CDD9E5',
+    borderRadius: 1.5,
+    height: 3,
+    width: 3,
+  },
+  textureLabel: {
+    color: '#9AA1AB',
+    fontFamily: fonts.sans,
+    fontSize: 10,
+    fontWeight: '500',
+    lineHeight: 10,
+  },
+  storeyTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    fontWeight: '400',
+    lineHeight: 20.4,
+    marginBottom: 3,
+  },
+  storeyExcerpt: {
+    color: '#8A939E',
+    fontFamily: fonts.serif,
+    fontSize: 13,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 18.2,
+  },
+  provenance: {
+    color: '#B0A894',
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    fontWeight: '400',
+    letterSpacing: 0.54,
+    lineHeight: 9,
+    marginTop: 7,
+  },
+  storeySide: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  duration: {
+    color: '#A6A092',
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: '400',
+    lineHeight: 10,
+    marginBottom: 5,
+  },
+  emptyState: {
+    borderColor: '#E8EEF3',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 22,
+  },
+  emptyTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 22,
+    fontWeight: '400',
+    lineHeight: 26,
+    marginBottom: 8,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  observationBand: {
+    backgroundColor: '#F1EDE4',
+    borderColor: '#E8E0D0',
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 22,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  observation: {
+    color: '#5A6470',
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    fontStyle: 'italic',
+    fontWeight: '300',
+    lineHeight: 27.2,
+    textAlign: 'center',
   },
   analyticsBand: {
     backgroundColor: '#EAF1F7',
@@ -566,28 +529,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderTopColor: '#DDE8F0',
     borderTopWidth: 1,
-    marginHorizontal: -40,
-    marginTop: 38,
-    paddingHorizontal: 40,
-    paddingVertical: 30,
-  },
-  analyticsBandPhone: {
-    marginHorizontal: -24,
-    paddingHorizontal: 24,
+    marginHorizontal: -28,
+    marginTop: 28,
+    paddingHorizontal: 28,
     paddingVertical: 26,
+  },
+  analyticsHead: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
   analyticsLabel: {
     color: colors.blue,
     fontFamily: fonts.mono,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '400',
-    letterSpacing: 2.2,
-    lineHeight: 11,
-    marginBottom: 20,
+    letterSpacing: 2,
+    lineHeight: 10,
+  },
+  analyticsRange: {
+    color: '#7E94A8',
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    fontWeight: '500',
   },
   analyticsGrid: {
     flexDirection: 'row',
-    gap: 26,
+    gap: 24,
   },
   analyticsGridPhone: {
     flexDirection: 'column',
@@ -596,11 +565,6 @@ const styles = StyleSheet.create({
   analyticsColumn: {
     flex: 1,
     minWidth: 0,
-  },
-  analyticsColumnPhone: {
-    borderBottomColor: '#DDE8F0',
-    borderBottomWidth: 1,
-    paddingBottom: 18,
   },
   analyticsKicker: {
     color: '#7E94A8',
@@ -639,7 +603,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 13,
   },
-  textureDot: {
+  analyticsDot: {
     borderRadius: 5,
     height: 10,
     width: 10,
@@ -648,7 +612,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 18,
-    marginTop: 20,
+    justifyContent: 'center',
+    marginTop: 22,
   },
   deepLink: {
     color: colors.blue,
@@ -665,55 +630,12 @@ const styles = StyleSheet.create({
   footer: {
     color: '#B0A894',
     fontFamily: fonts.mono,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
-    letterSpacing: 0.72,
-    marginTop: 36,
+    letterSpacing: 1.32,
+    lineHeight: 14,
+    marginTop: 34,
     textAlign: 'center',
-  },
-  feedback: {
-    alignItems: 'center',
-    marginTop: 36,
-  },
-  feedbackText: {
-    color: colors.muted,
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    marginTop: 12,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 28,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyState: {
-    borderColor: '#E8EEF3',
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 16,
-    padding: 22,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    fontFamily: fonts.serif,
-    fontSize: 24,
-    fontWeight: '400',
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: colors.muted,
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    lineHeight: 22,
   },
   pressed: {
     opacity: 0.72,

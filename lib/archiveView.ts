@@ -1,6 +1,6 @@
 import { getTextureColor } from '@/lib/theme';
 
-import type { MemoryListItem } from './memories';
+import type { StoreyListItem } from './storeys';
 
 export type ArchiveLens = 'time' | 'themes' | 'people';
 
@@ -44,21 +44,21 @@ const peopleMatchers: Array<[string, RegExp]> = [
   ['Family', /\bfamily\b/i],
 ];
 
-export function buildArchiveMoments(memories: MemoryListItem[]): ArchiveMoment[] {
-  return memories.map((memory) => {
-    const tags = getThemeTags(memory.tags);
-    const texture = normalizeTexture(memory.emotional_tone);
+export function buildArchiveMoments(storeys: StoreyListItem[]): ArchiveMoment[] {
+  return storeys.map((storey) => {
+    const tags = getThemeTags(storey.tags);
+    const texture = normalizeTexture(storey.emotional_tone);
 
     return {
-      excerpt: getExcerpt(memory.summary),
-      id: memory.id,
-      people: inferPeople(`${memory.title ?? ''} ${memory.summary ?? ''} ${tags.join(' ')}`),
+      excerpt: getExcerpt(storey.summary),
+      id: storey.id,
+      people: inferPeople(`${storey.title ?? ''} ${storey.summary ?? ''} ${tags.join(' ')}`),
       primaryTheme: tags[0] ?? defaultTheme,
-      stamp: formatMemoryStamp(memory.recorded_at),
+      stamp: formatStoreyStamp(storey.recorded_at),
       tags,
       texture,
       textureColor: getTextureColor(texture),
-      title: memory.title || 'Untitled memory',
+      title: storey.title || 'Untitled Storey',
     };
   });
 }
@@ -215,7 +215,7 @@ function normalizeTexture(texture: string | null | undefined) {
 
 function getExcerpt(summary: string | null | undefined) {
   if (!summary) {
-    return 'Storeybox is still preparing this memory.';
+    return 'Storeybox is still preparing this Storey.';
   }
 
   return summary.replace(/^["“]|["”]$/g, '').split(/[.!?]\s/)[0] || summary;
@@ -233,7 +233,7 @@ function sortAggregates<T extends { count: number; name: string }>(items: T[]) {
   return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-function formatMemoryStamp(value: string) {
+function formatStoreyStamp(value: string) {
   const date = new Date(value);
   const monthDay = new Intl.DateTimeFormat(undefined, {
     day: 'numeric',

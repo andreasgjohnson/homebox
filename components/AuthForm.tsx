@@ -7,17 +7,12 @@ import {
   Text,
   TextInput,
   View,
-  type ViewStyle,
 } from 'react-native';
 
 import { BoxIllustration } from '@/components/BoxHardware';
 import { getAuthRedirectUrl } from '@/lib/authRedirect';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
-
-const glowStyle = {
-  backgroundImage: 'radial-gradient(ellipse,#c7dcec,transparent 66%)',
-} as unknown as ViewStyle;
 
 type AuthFormProps = {
   mode?: 'login' | 'signup';
@@ -60,7 +55,7 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
   return (
     <View style={styles.stage}>
       <View style={styles.brand}>
-        <View style={[styles.brandGlow, glowStyle]} />
+        <View style={styles.brandGlow} />
         <Text style={styles.wordmark}>STOREYBOX</Text>
         <View style={styles.brandCopy}>
           <Text style={styles.brandTitle}>A place for the things worth keeping.</Text>
@@ -148,8 +143,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   brandGlow: {
+    backgroundColor: '#C7DCEC',
+    borderRadius: 340,
     height: 480,
     left: '42%',
+    opacity: 0.28,
     position: 'absolute',
     top: '46%',
     transform: [{ translateX: -340 }, { translateY: -240 }],

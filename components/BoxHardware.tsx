@@ -1,15 +1,7 @@
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { type StoreyBox, getBoxStateDetail } from '@/lib/box';
 import { colors, fonts } from '@/lib/theme';
-
-const blueGlowStyle = {
-  backgroundImage: 'radial-gradient(circle,#bcd2e6,transparent 68%)',
-} as unknown as ViewStyle;
-
-const amberGlowStyle = {
-  backgroundImage: 'radial-gradient(ellipse at 50% 40%,rgba(192,136,63,.12),transparent 70%)',
-} as unknown as ViewStyle;
 
 type BoxIllustrationProps = {
   ledColor?: string;
@@ -119,7 +111,7 @@ export function BoxPresenceCard({ box }: { box: StoreyBox }) {
         isRecording && styles.presenceCardRecording,
       ]}
     >
-      {isRecording ? <View style={[styles.amberWash, amberGlowStyle]} /> : null}
+      {isRecording ? <View style={styles.amberWash} /> : null}
       <View style={styles.boxStage}>
         {isRecording ? (
           <>
@@ -127,7 +119,7 @@ export function BoxPresenceCard({ box }: { box: StoreyBox }) {
             <View style={[styles.amberRingInner, styles.amberPulseDelay]} />
           </>
         ) : null}
-        {isReady ? <View style={[styles.boxGlow, blueGlowStyle]} /> : null}
+        {isReady ? <View style={styles.boxGlow} /> : null}
         <BoxIllustration ledColor={detail.ledColor} size={92} />
       </View>
       <Text style={[styles.presenceTitle, isRecording && styles.presenceTitleRecording]}>
@@ -213,6 +205,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(192,136,63,.45)',
   },
   amberWash: {
+    backgroundColor: 'rgba(192,136,63,.08)',
     borderRadius: 20,
     bottom: 0,
     left: 0,
@@ -229,6 +222,7 @@ const styles = StyleSheet.create({
     width: 128,
   },
   boxGlow: {
+    backgroundColor: 'rgba(188,210,230,.24)',
     borderRadius: 68,
     bottom: -16,
     left: -4,

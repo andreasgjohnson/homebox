@@ -132,8 +132,8 @@ export type RecordingCompletedRequest = {
 export type RecordingCompletedResponse = {
   app_box_state: BoxUiState;
   box_state: BoxUiState;
-  memory_id: string;
   recording_session_id: string;
+  storey_id: string;
   storey: StoreyPlaceholder;
   upload: SignedAudioUpload;
 };
@@ -160,13 +160,13 @@ export type UploadCompleteRequest = {
 export type UploadCompleteResponse = {
   app_box_state: BoxUiState;
   box_state: BoxUiState;
-  memory_id: string;
   processing_job: {
     id: string;
     status: StoreyProcessingStatus;
   };
   recording_session_id: string;
   safe_to_delete_local: boolean;
+  storey_id: string;
 };
 
 export type StoreyPlaceholder = {

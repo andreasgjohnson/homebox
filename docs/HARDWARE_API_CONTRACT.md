@@ -77,7 +77,7 @@ The Edge Function rejects requests with stale timestamps, reused nonces, unknown
 `storage.buckets.memory-audio` is private and currently allows user-scoped paths like:
 
 ```text
-{user_id}/{memory_id}/audio.m4a
+{user_id}/{storey_id}/audio.m4a
 ```
 
 Keep this path prefix because existing RLS checks the first folder name against `auth.uid()`.
@@ -152,7 +152,7 @@ public.recording_sessions (
   id uuid primary key,
   box_id uuid not null references public.boxes(id),
   user_id uuid references auth.users(id),
-  memory_id uuid references public.memories(id),
+  storey_id uuid references public.memories(id),
   client_recording_id text not null,
   state text not null, -- recording, recorded, uploading, uploaded, processing, ready, failed
   trigger text not null, -- button, scheduled_test, support
@@ -193,7 +193,7 @@ public.box_events (
 ```sql
 public.storey_processing_jobs (
   id uuid primary key,
-  memory_id uuid not null references public.memories(id) on delete cascade,
+  storey_id uuid not null references public.memories(id) on delete cascade,
   recording_session_id uuid references public.recording_sessions(id),
   status text not null, -- queued, transcribing, summarizing, ready, failed
   attempts int not null default 0,
@@ -461,7 +461,7 @@ Response:
 ```json
 {
   "recording_session_id": "74d1876c-2a74-45f0-8d7d-f53647db620b",
-  "memory_id": "2de2bb2b-9b56-41e1-94d7-234b5e78d7f2",
+  "storey_id": "2de2bb2b-9b56-41e1-94d7-234b5e78d7f2",
   "box_state": "syncing",
   "app_box_state": "syncing",
   "storey": {
@@ -548,7 +548,7 @@ Response:
 ```json
 {
   "recording_session_id": "74d1876c-2a74-45f0-8d7d-f53647db620b",
-  "memory_id": "2de2bb2b-9b56-41e1-94d7-234b5e78d7f2",
+  "storey_id": "2de2bb2b-9b56-41e1-94d7-234b5e78d7f2",
   "box_state": "idle",
   "app_box_state": "syncing",
   "processing_job": {
@@ -760,7 +760,7 @@ Backend-to-current-app mapping:
 4. The Edge Function creates a Storey placeholder and an exact storage path:
 
 ```text
-memory-audio/{user_id}/{memory_id}/audio.m4a
+memory-audio/{user_id}/{storey_id}/audio.m4a
 ```
 
 5. The Edge Function returns a short-lived signed upload URL for that path.

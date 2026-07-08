@@ -7,17 +7,12 @@ import {
   Text,
   TextInput,
   View,
-  type ViewStyle,
 } from 'react-native';
 
 import { BoxIllustration } from '@/components/BoxHardware';
 import { getAuthRedirectUrl } from '@/lib/authRedirect';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
-
-const glowStyle = {
-  backgroundImage: 'radial-gradient(ellipse,#c7dcec,transparent 66%)',
-} as unknown as ViewStyle;
 
 export function StoreyHero() {
   const router = useRouter();
@@ -55,7 +50,7 @@ export function StoreyHero() {
 
   return (
     <View style={styles.screen}>
-      <View style={[styles.glow, glowStyle]} />
+      <View style={styles.glow} />
       <View style={styles.content}>
         <Text style={styles.wordmark}>STOREYBOX</Text>
 
@@ -122,8 +117,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   glow: {
+    backgroundColor: '#C7DCEC',
+    borderRadius: 340,
     height: 480,
     left: '50%',
+    opacity: 0.28,
     position: 'absolute',
     top: '38%',
     transform: [{ translateX: -340 }, { translateY: -240 }],
