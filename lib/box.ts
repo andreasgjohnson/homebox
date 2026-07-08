@@ -1,11 +1,11 @@
-export type BoxState = 'ready' | 'recording' | 'syncing' | 'processing' | 'offline';
+export type BoxState = 'unpaired' | 'ready' | 'recording' | 'syncing' | 'processing' | 'offline';
 
 export type StoreyBox = {
-  connection: 'wifi' | 'offline';
+  connection: 'wifi' | 'offline' | 'unknown';
   id: string;
-  lastStoreyAt: string;
-  lastSync: string;
-  location: string;
+  lastStoreyAt: string | null;
+  lastSync: string | null;
+  location: string | null;
   name: string;
   notifications: {
     newStorey: boolean;
@@ -16,18 +16,18 @@ export type StoreyBox = {
 };
 
 export const defaultBox: StoreyBox = {
-  connection: 'wifi',
-  id: 'bedside-box',
-  lastStoreyAt: '2026-06-22T22:42:00.000Z',
-  lastSync: '2026-06-22T22:44:00.000Z',
-  location: 'Bedside',
-  name: 'Bedside Box',
+  connection: 'unknown',
+  id: 'unpaired-box',
+  lastStoreyAt: null,
+  lastSync: null,
+  location: null,
+  name: 'Your Box',
   notifications: {
     newStorey: true,
     prompt: false,
     storeyReady: true,
   },
-  state: 'ready',
+  state: 'unpaired',
 };
 
 export const boxStateDetails: Record<
@@ -39,11 +39,17 @@ export const boxStateDetails: Record<
     sub: (box: StoreyBox) => string;
   }
 > = {
+  unpaired: {
+    cardTitle: 'Pair your Box.',
+    ledColor: '#8A939E',
+    note: 'Box status will appear here after pairing is complete.',
+    sub: () => 'NOT PAIRED YET',
+  },
   ready: {
     cardTitle: 'Your Box is ready.',
     ledColor: '#3D5F7E',
     note: 'When something is worth keeping, press the button.',
-    sub: (box) => `${box.location.toUpperCase()} · CONNECTED`,
+    sub: (box) => `${(box.location ?? 'HOME').toUpperCase()} · CONNECTED`,
   },
   recording: {
     cardTitle: 'Your Box is listening.',

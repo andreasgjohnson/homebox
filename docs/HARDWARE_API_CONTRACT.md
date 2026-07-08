@@ -757,13 +757,13 @@ Backend-to-current-app mapping:
 1. The Box never receives Supabase service role credentials.
 2. The Box signs `recordings/complete`.
 3. The Edge Function validates the Box and confirms the paired `user_id`.
-4. The Edge Function creates a Storey placeholder and an exact storage path:
+4. The Edge Function creates a Storey placeholder and an exact bucket-relative storage path:
 
 ```text
-memory-audio/{user_id}/{storey_id}/audio.m4a
+{user_id}/{storey_id}/audio.m4a
 ```
 
-5. The Edge Function returns a short-lived signed upload URL for that path.
+5. The Edge Function returns bucket `memory-audio` plus a short-lived signed upload URL for that path.
 6. The Box uploads bytes directly to Storage.
 7. The Box calls `upload-complete`.
 8. The Edge Function verifies the object, updates `memories.audio_url`, and queues processing.

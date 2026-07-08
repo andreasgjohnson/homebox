@@ -9,6 +9,8 @@ export type ArchiveMoment = {
   id: string;
   people: string[];
   primaryTheme: string;
+  recordedAt: string;
+  recordedDate: Date;
   stamp: string;
   tags: string[];
   texture: string;
@@ -48,12 +50,15 @@ export function buildArchiveMoments(storeys: StoreyListItem[]): ArchiveMoment[] 
   return storeys.map((storey) => {
     const tags = getThemeTags(storey.tags);
     const texture = normalizeTexture(storey.emotional_tone);
+    const recordedDate = new Date(storey.recorded_at);
 
     return {
       excerpt: getExcerpt(storey.summary),
       id: storey.id,
       people: inferPeople(`${storey.title ?? ''} ${storey.summary ?? ''} ${tags.join(' ')}`),
       primaryTheme: tags[0] ?? defaultTheme,
+      recordedAt: storey.recorded_at,
+      recordedDate,
       stamp: formatStoreyStamp(storey.recorded_at),
       tags,
       texture,
@@ -100,7 +105,7 @@ export function getTimeAggregates(moments: ArchiveMoment[]) {
   const counts = new Map<string, ArchiveAggregate>();
 
   moments.forEach((moment) => {
-    const label = getMonthLabelFromStamp(moment.stamp);
+    const label = formatMonthYear(moment.recordedDate);
     const current = counts.get(label) ?? {
       color: moment.textureColor,
       count: 0,
@@ -124,7 +129,7 @@ export function getArchivePeriods(moments: ArchiveMoment[]) {
   const buckets = new Map<string, ArchiveMoment[]>();
 
   moments.forEach((moment) => {
-    const date = parseStampDate(moment.stamp);
+    const date = moment.recordedDate;
     let label = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date);
     let sub = new Intl.DateTimeFormat(undefined, { year: 'numeric' }).format(date);
 
@@ -247,15 +252,11 @@ function formatStoreyStamp(value: string) {
   return `${monthDay} · ${time}`.toUpperCase();
 }
 
-function getMonthLabelFromStamp(stamp: string) {
-  const [month] = stamp.split(' ');
-  const year = new Date().getFullYear();
-  return `${toDisplayLabel(month)} ${year}`;
-}
-
-function parseStampDate(stamp: string) {
-  const [month, day] = stamp.split(' · ')[0].split(' ');
-  return new Date(`${month} ${day}, ${new Date().getFullYear()}`);
+function formatMonthYear(date: Date) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
 }
 
 function getWeekRangeLabel(start: Date, end: Date) {

@@ -160,9 +160,8 @@ export default function StoreyDetailScreen() {
     setIsDeleting(true);
     setErrorMessage(null);
 
-    if (storey.audio_url && isUploadedStoreyAudioPath(storey.audio_url)) {
-      await removeStoreyAudio(storey.audio_url);
-    }
+    const uploadedAudioPath =
+      storey.audio_url && isUploadedStoreyAudioPath(storey.audio_url) ? storey.audio_url : null;
 
     const { error } = await deleteStorey(storey.id, session.user.id);
 
@@ -170,6 +169,14 @@ export default function StoreyDetailScreen() {
       setErrorMessage(error.message);
       setIsDeleting(false);
       return;
+    }
+
+    if (uploadedAudioPath) {
+      const { error: storageError } = await removeStoreyAudio(uploadedAudioPath);
+
+      if (storageError) {
+        reportAudioCleanupIssue(storageError.message);
+      }
     }
 
     router.replace('/archive' as Href);
@@ -243,7 +250,7 @@ export default function StoreyDetailScreen() {
               <Text style={styles.dateLine}>
                 {formatDetailDate(storey.recorded_at)} · {formatAudioTime(duration)}
               </Text>
-              <Text style={styles.capturedBy}>Captured by Bedside Box</Text>
+              <Text style={styles.capturedBy}>Captured by your Box</Text>
               {isEditingTitle ? (
                 <View style={styles.titleEditor}>
                   <TextInput
@@ -458,6 +465,17 @@ function confirmDelete(title: string) {
       { style: 'destructive', text: 'Delete', onPress: () => resolve(true) },
     ]);
   });
+}
+
+function reportAudioCleanupIssue(message: string) {
+  const text = `The Storey was deleted, but its private audio could not be removed automatically. ${message}`;
+
+  if (Platform.OS === 'web') {
+    globalThis.alert(text);
+    return;
+  }
+
+  Alert.alert('Audio cleanup needed', text);
 }
 
 const styles = StyleSheet.create({

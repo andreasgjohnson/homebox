@@ -66,9 +66,9 @@ export default function OnboardingScreen() {
             </View>
             <View style={styles.connectedPill}>
               <View style={styles.connectedDot} />
-              <Text style={styles.connectedText}>Nearby · connected</Text>
+              <Text style={styles.connectedText}>Pairing starts after setup</Text>
             </View>
-            <Text style={styles.stepTitle}>Your Box is here.</Text>
+            <Text style={styles.stepTitle}>Pair your Box.</Text>
             <Text style={styles.bodySmall}>Where does it live?</Text>
             <View style={styles.locationWrap}>
               {locations.map((location) => {

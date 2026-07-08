@@ -63,7 +63,7 @@ export default function ThemeScreen() {
   const matchingMoments = moments.filter((moment) =>
     moment.tags.some((tag) => tag.toLowerCase() === themeName.toLowerCase()),
   );
-  const visibleMoments = matchingMoments.length ? matchingMoments : moments.slice(0, 4);
+  const visibleMoments = matchingMoments;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -79,7 +79,7 @@ export default function ThemeScreen() {
 
         <View style={[styles.header, isPhone && styles.headerPhone]}>
           <View style={[styles.glow, isPhone && styles.glowPhone]} />
-          <Text style={styles.eyebrow}>THEME · {theme?.count ?? visibleMoments.length} STOREYS · RISING</Text>
+          <Text style={styles.eyebrow}>THEME · {theme?.count ?? visibleMoments.length} STOREYS</Text>
           <Text style={[styles.title, isPhone && styles.titlePhone]}>{themeName}</Text>
         </View>
 
@@ -96,7 +96,7 @@ export default function ThemeScreen() {
           </View>
         ) : null}
 
-        {!isLoading && !errorMessage ? (
+        {!isLoading && !errorMessage && visibleMoments.length ? (
           <>
             <TrendPanel label={`HOW OFTEN ${themeName.toUpperCase()} COMES UP`} />
             <PeriodDivider count={Math.min(visibleMoments.length, 3)} label="THIS MONTH" />
@@ -105,8 +105,28 @@ export default function ThemeScreen() {
             <MomentCards moments={visibleMoments.slice(3, 6)} router={router} />
           </>
         ) : null}
+
+        {!isLoading && !errorMessage && !visibleMoments.length ? (
+          <EmptyState
+            body={
+              moments.length
+                ? 'No Storeys in your archive carry this theme yet.'
+                : 'Storeys will appear here after your Box syncs.'
+            }
+            title={`No ${themeName} Storeys yet.`}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function EmptyState({ body, title }: { body: string; title: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyText}>{body}</Text>
+    </View>
   );
 }
 
@@ -183,7 +203,7 @@ function MomentCards({
             </View>
             <Text style={styles.cardTitle}>{moment.title}</Text>
             <Text style={styles.cardExcerpt}>“{moment.excerpt}”</Text>
-            <Text style={styles.cardProvenance}>KEPT AT HOME · Captured by Bedside Box</Text>
+            <Text style={styles.cardProvenance}>KEPT AT HOME · Captured by your Box</Text>
           </View>
           <Text style={styles.duration}>3:48</Text>
         </Pressable>
@@ -478,5 +498,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+  },
+  emptyTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    fontWeight: '400',
+    lineHeight: 29,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

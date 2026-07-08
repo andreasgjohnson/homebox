@@ -2,11 +2,13 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import { BoxIllustration, BoxStatusBadge } from '@/components/BoxHardware';
-import { defaultBox } from '@/lib/box';
+import { defaultBox, getBoxStateDetail } from '@/lib/box';
 import { colors, fonts } from '@/lib/theme';
 
 export default function YourBoxScreen() {
   const box = defaultBox;
+  const boxDetail = getBoxStateDetail(box);
+  const isPaired = box.state !== 'unpaired';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -20,7 +22,7 @@ export default function YourBoxScreen() {
         <View style={styles.hero}>
           <View style={styles.boxStage}>
             <View style={styles.glow} />
-            <BoxIllustration size={118} ledColor="#3D5F7E" />
+            <BoxIllustration size={118} ledColor={boxDetail.ledColor} />
           </View>
           <Text style={styles.boxName}>{box.name}</Text>
           <BoxStatusBadge box={box} />
@@ -28,11 +30,17 @@ export default function YourBoxScreen() {
 
         <View style={styles.table}>
           {[
-            { label: 'Connection', value: box.connection === 'wifi' ? 'Wi-Fi connected' : 'Offline' },
-            { label: 'Last sync', value: 'Last night, 10:44 PM' },
-            { label: 'Last Storey received', value: 'June 22, 2026' },
-            { label: 'Location', value: box.location },
-            { label: 'Status', value: 'Up to date' },
+            {
+              label: 'Connection',
+              value: isPaired ? (box.connection === 'wifi' ? 'Wi-Fi connected' : 'Offline') : 'Not paired yet',
+            },
+            { label: 'Last sync', value: box.lastSync ? formatBoxDate(box.lastSync) : 'Waiting for pairing' },
+            {
+              label: 'Last Storey received',
+              value: box.lastStoreyAt ? formatBoxDate(box.lastStoreyAt) : 'No Storeys yet',
+            },
+            { label: 'Location', value: box.location ?? 'Choose during pairing' },
+            { label: 'Status', value: isPaired ? boxDetail.cardTitle.replace(/\.$/, '') : 'Pairing required' },
           ].map(({ label, value }) => (
             <View key={label} style={styles.tableRow}>
               <Text style={styles.tableLabel}>{label}</Text>
@@ -87,6 +95,15 @@ export default function YourBoxScreen() {
       <BottomTabBar activeTab="box" />
     </SafeAreaView>
   );
+}
+
+function formatBoxDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    month: 'short',
+  }).format(new Date(value));
 }
 
 const styles = StyleSheet.create({

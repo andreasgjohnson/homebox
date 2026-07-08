@@ -81,6 +81,7 @@ export default function HomeScreen() {
   const topPerson = people[0];
   const topTexture = storeys[0]?.texture ?? 'Reflective';
   const observation = getDashboardInsight(themes).replace('\n', ' ');
+  const capturedByLabel = defaultBox.state === 'unpaired' ? 'your Box' : defaultBox.name;
 
   async function signOut() {
     setIsSigningOut(true);
@@ -118,7 +119,7 @@ export default function HomeScreen() {
               <View style={styles.returnHairline} />
               <Text style={styles.returnProvenance}>
                 {returnStorey
-                  ? `You left this with ${defaultBox.name}.`
+                  ? `This Storey came from ${capturedByLabel}.`
                   : 'Your Box will place something here when the archive has a little more to hold.'}
               </Text>
               <Text style={styles.returnTitle}>
@@ -173,7 +174,7 @@ export default function HomeScreen() {
                       <Text numberOfLines={1} style={styles.storeyExcerpt}>
                         "{storey.excerpt}"
                       </Text>
-                      <Text style={styles.provenance}>KEPT AT HOME · Captured by {defaultBox.name}</Text>
+                      <Text style={styles.provenance}>KEPT AT HOME · Captured by {capturedByLabel}</Text>
                     </View>
                     <View style={styles.storeySide}>
                       <Text style={styles.duration}>2:14</Text>

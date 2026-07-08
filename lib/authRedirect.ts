@@ -40,9 +40,13 @@ export function subscribeToAuthRedirects(onError: AuthRedirectErrorHandler) {
 }
 
 async function completeAuthSessionFromUrl(url: string) {
+  if (!isAuthCallbackUrl(url)) {
+    return false;
+  }
+
   const params = getAuthParams(url);
 
-  if (!isAuthCallbackUrl(url) && !hasSupabaseAuthParams(params)) {
+  if (!hasSupabaseAuthParams(params)) {
     return false;
   }
 

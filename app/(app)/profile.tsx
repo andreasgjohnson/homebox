@@ -18,7 +18,7 @@ import { useAuth } from '@/providers/AuthProvider';
 
 export default function ProfileScreen() {
   const { session } = useAuth();
-  const [displayName, setDisplayName] = useState('Andreas');
+  const [displayName, setDisplayName] = useState(session?.user.email || 'Your archive');
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const initial = (displayName || session?.user.email || 'A').slice(0, 1).toUpperCase();
