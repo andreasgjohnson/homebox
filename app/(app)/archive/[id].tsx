@@ -16,12 +16,14 @@ import {
 } from 'react-native';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { createStoreyAudioSignedUrl, isUploadedStoreyAudioPath } from '@/lib/storeyAudio';
 import {
-  createStoreyAudioSignedUrl,
-  isUploadedStoreyAudioPath,
-  removeStoreyAudio,
-} from '@/lib/storeyAudio';
-import { deleteStorey, getStorey, updateStoreyTitle, type Storey } from '@/lib/storeys';
+  deleteStorey,
+  getStorey,
+  getStoreyProvenance,
+  updateStoreyTitle,
+  type Storey,
+} from '@/lib/storeys';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -119,6 +121,7 @@ export default function StoreyDetailScreen() {
   }, [storey?.audio_url]);
 
   const markedMoments = useMemo(() => getMarkedMoments(storey), [storey]);
+  const provenance = useMemo(() => (storey ? getStoreyProvenance(storey) : null), [storey]);
   const wordCount = useMemo(() => getWordCount(storey?.transcript), [storey?.transcript]);
   const summary = personalizeSummary(storey?.summary);
   const duration = playerStatus.duration || 100;
@@ -160,23 +163,12 @@ export default function StoreyDetailScreen() {
     setIsDeleting(true);
     setErrorMessage(null);
 
-    const uploadedAudioPath =
-      storey.audio_url && isUploadedStoreyAudioPath(storey.audio_url) ? storey.audio_url : null;
-
-    const { error } = await deleteStorey(storey.id, session.user.id);
+    const { error } = await deleteStorey(storey.id);
 
     if (error) {
       setErrorMessage(error.message);
       setIsDeleting(false);
       return;
-    }
-
-    if (uploadedAudioPath) {
-      const { error: storageError } = await removeStoreyAudio(uploadedAudioPath);
-
-      if (storageError) {
-        reportAudioCleanupIssue(storageError.message);
-      }
     }
 
     router.replace('/archive' as Href);
@@ -246,11 +238,13 @@ export default function StoreyDetailScreen() {
         {!isLoading && storey ? (
           <>
             <View style={styles.header}>
-              <Text style={styles.provenanceLabel}>KEPT AT HOME</Text>
+              <Text style={styles.provenanceLabel}>{provenance?.badge}</Text>
               <Text style={styles.dateLine}>
                 {formatDetailDate(storey.recorded_at)} · {formatAudioTime(duration)}
               </Text>
-              <Text style={styles.capturedBy}>Captured by your Box</Text>
+              {provenance?.capturedBy ? (
+                <Text style={styles.capturedBy}>{provenance.capturedBy}</Text>
+              ) : null}
               {isEditingTitle ? (
                 <View style={styles.titleEditor}>
                   <TextInput
@@ -465,17 +459,6 @@ function confirmDelete(title: string) {
       { style: 'destructive', text: 'Delete', onPress: () => resolve(true) },
     ]);
   });
-}
-
-function reportAudioCleanupIssue(message: string) {
-  const text = `The Storey was deleted, but its private audio could not be removed automatically. ${message}`;
-
-  if (Platform.OS === 'web') {
-    globalThis.alert(text);
-    return;
-  }
-
-  Alert.alert('Audio cleanup needed', text);
 }
 
 const styles = StyleSheet.create({
