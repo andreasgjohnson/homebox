@@ -28,4 +28,3 @@ String sbBase64Encode(const uint8_t *data, size_t len);
 String sbBase64UrlEncode(const uint8_t *data, size_t len);
 
 void sbIdentityPrintProvisioningSql(Stream &out);
-

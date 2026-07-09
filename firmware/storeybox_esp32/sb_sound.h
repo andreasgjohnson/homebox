@@ -11,4 +11,3 @@ enum SbChime {
 
 void sbSoundBegin();
 void sbSoundPlay(SbChime chime);
-

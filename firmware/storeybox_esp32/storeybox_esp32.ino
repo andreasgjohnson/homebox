@@ -168,6 +168,10 @@ void updateButtonLed() {
 }
 
 void updateRingMode() {
+  if (sbRingMode() == SB_RING_ERROR) {
+    return;
+  }
+
   if (sbRecorderIsRecording()) {
     sbRingSetMode(SB_RING_RECORDING);
   } else if (gSyncActive || sbRecorderQueuedCount() > 0) {
@@ -527,4 +531,3 @@ void loop() {
 
   delay(5);
 }
-

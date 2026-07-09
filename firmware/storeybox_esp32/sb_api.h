@@ -60,4 +60,3 @@ bool sbApiUploadFile(const SbUploadLease &upload, File &file, size_t fileSizeByt
 bool sbApiUploadComplete(const String &sessionId, const SbUploadLease &upload, size_t fileSizeBytes, const String &sha256, SbUploadCompleteResult &out);
 bool sbApiSyncComplete(const String &sessionId, bool localCopyDeleted);
 bool sbApiReportError(const String &severity, const String &message, const String &recordingSessionId = "");
-

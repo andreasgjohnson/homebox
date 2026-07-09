@@ -599,4 +599,3 @@ String sbRecorderLastError() {
 size_t sbRecorderDroppedBytes() {
   return droppedBytes;
 }
-

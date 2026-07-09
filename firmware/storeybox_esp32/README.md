@@ -121,4 +121,3 @@ If `SB_ENABLE_LED_RING` is set to `0`, GPIO 2 is used as a simple fallback LED.
 ```sh
 arduino-cli compile --fqbn esp32:esp32:esp32 firmware/storeybox_esp32
 ```
-

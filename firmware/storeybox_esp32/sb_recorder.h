@@ -40,4 +40,3 @@ bool sbRecorderDeleteLocal(const SbRecordingMeta &meta);
 
 String sbRecorderLastError();
 size_t sbRecorderDroppedBytes();
-

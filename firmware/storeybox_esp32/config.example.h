@@ -34,4 +34,3 @@
 
 // Built-in DevKit LED fallback when SB_ENABLE_LED_RING is 0.
 #define SB_PIN_FALLBACK_LED 2
-

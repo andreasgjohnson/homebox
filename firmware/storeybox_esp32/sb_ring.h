@@ -15,4 +15,3 @@ void sbRingSetMode(SbRingMode mode);
 SbRingMode sbRingMode();
 void sbRingFlashError();
 void sbRingUpdate();
-

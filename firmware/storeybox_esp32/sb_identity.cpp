@@ -352,4 +352,3 @@ void sbIdentityPrintProvisioningSql(Stream &out) {
   out.println("----- End provisioning SQL -----");
   out.println();
 }
-
