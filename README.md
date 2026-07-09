@@ -78,8 +78,10 @@ Hardware tables (`boxes`, `box_memberships`, `box_credentials`,
 4. Set the OpenAI API key as a Supabase Edge Function secret:
    `supabase secrets set OPENAI_API_KEY=sk-...`.
 5. Deploy the Edge Functions:
-   `supabase functions deploy box-api` and
-   `supabase functions deploy process-memory`.
+   `supabase functions deploy box-api`,
+   `supabase functions deploy process-storey-jobs --no-verify-jwt`, and
+   `supabase functions deploy process-memory` (legacy, kept for
+   compatibility; see `supabase/functions/process-storey-jobs/README.md`).
 6. In Supabase Auth settings, enable email magic links and add the app's
    redirect URLs (including `storeybox://auth/callback`) to the allowed
    redirect URLs.
