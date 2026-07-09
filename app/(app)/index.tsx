@@ -21,7 +21,7 @@ import {
   getThemeAggregates,
   toSlug,
 } from '@/lib/archiveView';
-import { defaultBox } from '@/lib/box';
+import { defaultBox, fetchPrimaryStoreyBox, type StoreyBox } from '@/lib/box';
 import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
@@ -35,6 +35,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const isPhone = width < 700;
   const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
+  const [box, setBox] = useState<StoreyBox>(defaultBox);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [isLoadingStoreys, setIsLoadingStoreys] = useState(true);
@@ -49,9 +50,10 @@ export default function HomeScreen() {
     setIsLoadingStoreys(true);
     setErrorMessage(null);
 
-    const [{ data, error }, { data: profile }] = await Promise.all([
+    const [{ data, error }, { data: profile }, { box: userBox }] = await Promise.all([
       listStoreys(session.user.id),
       getProfile(session.user.id),
+      fetchPrimaryStoreyBox(session.user.id),
     ]);
 
     if (error) {
@@ -59,6 +61,8 @@ export default function HomeScreen() {
     } else {
       setStoreysFromCloud(data ?? []);
     }
+
+    setBox(userBox);
 
     setProfileName(getProfileDisplayName(profile ?? null));
     setProfileAvatarUrl(await getProfilePhotoPreviewUrl(profile?.avatar_url));
@@ -81,7 +85,7 @@ export default function HomeScreen() {
   const topPerson = people[0];
   const topTexture = storeys[0]?.texture ?? 'Reflective';
   const observation = getDashboardInsight(themes).replace('\n', ' ');
-  const capturedByLabel = defaultBox.state === 'unpaired' ? 'your Box' : defaultBox.name;
+  const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
   async function signOut() {
     setIsSigningOut(true);
@@ -105,7 +109,7 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Good {getDayPart()}, {firstName}.</Text>
           </View>
 
-          <BoxPresenceCard box={defaultBox} />
+          <BoxPresenceCard box={box} />
 
           <View style={styles.section}>
             <Text style={styles.eyebrow}>FOR TONIGHT</Text>
