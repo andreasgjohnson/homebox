@@ -488,6 +488,8 @@ async function handleUploadComplete({ supabase, box, body }: BoxContext, session
 
   await supabase.from('boxes').update({ cloud_state: 'idle' }).eq('id', box.id);
 
+  triggerStoreyProcessing(job.id as string);
+
   return {
     recordingSessionId: session.id,
     response: {
@@ -860,6 +862,31 @@ async function findOrCreateProcessingJob(supabase: SupabaseClient, storeyId: str
   }
 
   return job;
+}
+
+// Fire-and-forget kick of the processing worker so transcription starts
+// immediately after upload; a cron backstop can drain anything this misses.
+function triggerStoreyProcessing(jobId: string) {
+  try {
+    const supabaseUrl = readEnv('SUPABASE_URL');
+    const serviceRoleKey = readEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const invocation = fetch(`${supabaseUrl}/functions/v1/process-storey-jobs`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ job_id: jobId }),
+    }).catch(() => {
+      // The cron backstop retries queued jobs; upload-complete must not fail
+      // because the worker kick did.
+    });
+
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+    runtime?.waitUntil?.(invocation);
+  } catch {
+    // Missing env only happens outside the edge runtime; never block the Box.
+  }
 }
 
 function getAudioFile(container: string | null) {
