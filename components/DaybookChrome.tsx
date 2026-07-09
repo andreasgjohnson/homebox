@@ -18,28 +18,29 @@ type DaybookChromeProps = {
   avatarUrl?: string | null;
   children: ReactNode;
   isSigningOut?: boolean;
-  memoryCount?: number;
   onSignOut?: () => void;
   returningThemes?: string[];
+  storeyCount?: number;
   userInitial?: string;
   userName?: string | null;
 };
 
 const navItems: Array<{ href: Href; label: string }> = [
   { href: '/' as Href, label: 'Dashboard' },
-  { href: '/memories' as Href, label: 'Memories' },
-  { href: '/memories?lens=themes' as Href, label: 'Themes' },
-  { href: '/memories?lens=people' as Href, label: 'People' },
-  { href: '/memories' as Href, label: 'Collections' },
+  { href: '/archive' as Href, label: 'Archive' },
+  { href: '/archive?lens=themes' as Href, label: 'Themes' },
+  { href: '/archive?lens=people' as Href, label: 'People' },
+  { href: '/archive' as Href, label: 'Collections' },
+  { href: '/your-box' as Href, label: 'Your Box' },
 ];
 
 export function DaybookChrome({
   avatarUrl,
   children,
   isSigningOut = false,
-  memoryCount = 0,
   onSignOut,
   returningThemes = [],
+  storeyCount = 0,
   userInitial = 'A',
   userName,
 }: DaybookChromeProps) {
@@ -77,11 +78,11 @@ export function DaybookChrome({
         <StoreyboxDrawer
           isOpen={isDrawerOpen}
           isSigningOut={isSigningOut}
-          memoryCount={memoryCount}
           onClose={() => setIsDrawerOpen(false)}
           onNavigate={navigate}
           onSignOut={onSignOut}
           returningThemes={returningThemes}
+          storeyCount={storeyCount}
           avatarUrl={avatarUrl}
           userInitial={userInitial}
           userName={userName}
@@ -95,11 +96,11 @@ export function StoreyboxDrawer({
   avatarUrl,
   isOpen,
   isSigningOut = false,
-  memoryCount = 0,
   onClose,
   onNavigate,
   onSignOut,
   returningThemes = [],
+  storeyCount = 0,
   userInitial = 'A',
   userName,
 }: Omit<DaybookChromeProps, 'children'> & {
@@ -123,7 +124,7 @@ export function StoreyboxDrawer({
             <ProfileAvatar avatarUrl={avatarUrl} size="large" userInitial={userInitial} />
             <View>
               <Text style={styles.userName}>{userName || 'Your archive'}</Text>
-              <Text style={styles.userMeta}>{memoryCount} moments kept</Text>
+              <Text style={styles.userMeta}>{storeyCount} Storeys kept</Text>
             </View>
           </View>
 
@@ -232,7 +233,11 @@ export function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function BottomTabBar({ activeTab }: { activeTab: 'home' | 'memories' | 'you' }) {
+export function BottomTabBar({
+  activeTab,
+}: {
+  activeTab: 'home' | 'archive' | 'box' | 'profile';
+}) {
   const router = useRouter();
 
   return (
@@ -241,30 +246,18 @@ export function BottomTabBar({ activeTab }: { activeTab: 'home' | 'memories' | '
         <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
         <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>Home</Text>
       </Pressable>
-      <Pressable onPress={() => router.replace('/memories' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'memories' && styles.tabActive]}>▱</Text>
-        <Text style={[styles.tabLabel, activeTab === 'memories' && styles.tabActive]}>Memories</Text>
+      <Pressable onPress={() => router.replace('/archive' as Href)} style={styles.tabSlot}>
+        <Text style={[styles.tabIcon, activeTab === 'archive' && styles.tabActive]}>▱</Text>
+        <Text style={[styles.tabLabel, activeTab === 'archive' && styles.tabActive]}>Archive</Text>
       </Pressable>
-      <Pressable onPress={() => router.push('/memories/new' as Href)} style={styles.recordTabSlot}>
-        <View style={styles.recordTabCircle}>
-          <SmallMicIcon />
-        </View>
-        <Text style={styles.recordTabLabel}>Record</Text>
+      <Pressable onPress={() => router.replace('/your-box' as Href)} style={styles.tabSlot}>
+        <Text style={[styles.tabIcon, activeTab === 'box' && styles.tabActive]}>◉</Text>
+        <Text style={[styles.tabLabel, activeTab === 'box' && styles.tabActive]}>Your Box</Text>
       </Pressable>
       <Pressable onPress={() => router.push('/profile' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'you' && styles.tabActive]}>◌</Text>
-        <Text style={[styles.tabLabel, activeTab === 'you' && styles.tabActive]}>You</Text>
+        <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabActive]}>◌</Text>
+        <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabActive]}>Profile</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function SmallMicIcon() {
-  return (
-    <View style={styles.smallMicWrap}>
-      <View style={styles.smallMicBody} />
-      <View style={styles.smallMicArc} />
-      <View style={styles.smallMicStem} />
     </View>
   );
 }
@@ -362,11 +355,15 @@ const styles = StyleSheet.create({
   },
   drawer: {
     backgroundColor: '#F1EDE4',
-    boxShadow: '24px 0 60px rgba(28,34,42,.26)',
+    elevation: 12,
     flex: 1,
     maxWidth: 360,
     paddingHorizontal: 30,
     paddingVertical: 34,
+    shadowColor: '#1C222A',
+    shadowOffset: { height: 0, width: 24 },
+    shadowOpacity: 0.26,
+    shadowRadius: 60,
     width: '86%',
   },
   drawerTop: {
@@ -491,17 +488,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabBar: {
-    alignItems: 'flex-start',
-    backgroundColor: '#F1EDE4',
-    borderTopColor: colors.borderStrong,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     bottom: 0,
     flexDirection: 'row',
-    height: 122,
+    height: 64,
     justifyContent: 'space-around',
     left: 0,
     paddingHorizontal: 16,
-    paddingTop: 13,
     position: 'absolute',
     right: 0,
   },
@@ -509,7 +505,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     gap: 4,
-    paddingTop: 8,
+    paddingVertical: 8,
   },
   tabIcon: {
     color: '#A6A092',
@@ -526,59 +522,6 @@ const styles = StyleSheet.create({
     lineHeight: 12,
   },
   tabActive: {
-    color: colors.blue,
-  },
-  recordTabSlot: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 6,
-  },
-  recordTabCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.ink,
-    borderRadius: 29,
-    boxShadow: '0 10px 24px rgba(30,38,48,.3)',
-    height: 58,
-    justifyContent: 'center',
-    marginTop: -24,
-    width: 58,
-  },
-  recordTabLabel: {
-    color: '#A6A092',
-    fontFamily: fonts.sans,
-    fontSize: 10,
-    fontWeight: '600',
-    lineHeight: 12,
-  },
-  smallMicWrap: {
-    alignItems: 'center',
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  smallMicBody: {
-    borderColor: '#CDD9E5',
-    borderRadius: 5,
-    borderWidth: 1.5,
-    height: 13,
-    width: 8,
-  },
-  smallMicArc: {
-    borderBottomColor: '#CDD9E5',
-    borderBottomWidth: 1.5,
-    borderLeftColor: '#CDD9E5',
-    borderLeftWidth: 1.5,
-    borderRightColor: '#CDD9E5',
-    borderRightWidth: 1.5,
-    borderTopWidth: 0,
-    height: 9,
-    marginTop: -5,
-    width: 17,
-  },
-  smallMicStem: {
-    backgroundColor: '#CDD9E5',
-    height: 5,
-    marginTop: -1,
-    width: 1.5,
+    color: colors.ink,
   },
 });

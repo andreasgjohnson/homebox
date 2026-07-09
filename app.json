@@ -4,6 +4,7 @@
     "slug": "storeybox-home",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
     "scheme": "storeybox",
     "userInterfaceStyle": "light",
     "plugins": [
@@ -11,9 +12,18 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Storeybox Home to record private memories.",
-          "enableBackgroundPlayback": false,
-          "enableBackgroundRecording": false
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5EFE5",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 220
         }
       ]
     ],
@@ -21,7 +31,13 @@
       "typedRoutes": true
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.storeybox.app",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "deploymentTarget": "18.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

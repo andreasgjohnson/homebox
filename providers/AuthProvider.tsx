@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 
+import { completeInitialAuthRedirect, subscribeToAuthRedirects } from '@/lib/authRedirect';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -30,22 +31,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     let isMounted = true;
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) {
-        setSession(data.session);
-        setIsLoading(false);
-      }
+    const unsubscribeFromAuthRedirects = subscribeToAuthRedirects((error) => {
+      console.warn('Could not complete auth redirect.', error);
     });
+
+    void completeInitialAuthRedirect()
+      .catch((error) => {
+        console.warn('Could not complete initial auth redirect.', error);
+      })
+      .finally(() => {
+        void supabase.auth.getSession().then(({ data }) => {
+          if (isMounted) {
+            setSession(data.session);
+            setIsLoading(false);
+          }
+        });
+      });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setIsLoading(false);
+      if (isMounted) {
+        setSession(nextSession);
+        setIsLoading(false);
+      }
     });
 
     return () => {
       isMounted = false;
+      unsubscribeFromAuthRedirects();
       subscription.unsubscribe();
     };
   }, []);

@@ -24,20 +24,20 @@ import {
   getTimeAggregates,
   toSlug,
 } from '@/lib/archiveView';
-import { listMemories, type MemoryListItem } from '@/lib/memories';
 import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
+import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
-export default function MemoriesScreen() {
+export default function ArchiveScreen() {
   const { lens } = useLocalSearchParams<{ lens?: ArchiveLens }>();
   const router = useRouter();
   const { session } = useAuth();
   const { width } = useWindowDimensions();
   const isPhone = width < 700;
-  const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -47,7 +47,7 @@ export default function MemoriesScreen() {
 
   const activeLens: ArchiveLens = lens === 'themes' || lens === 'people' ? lens : 'time';
 
-  const loadMemories = useCallback(async () => {
+  const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
@@ -56,14 +56,14 @@ export default function MemoriesScreen() {
     setErrorMessage(null);
 
     const [{ data, error }, { data: profile }] = await Promise.all([
-      listMemories(session.user.id),
+      listStoreys(session.user.id),
       getProfile(session.user.id),
     ]);
 
     if (error) {
       setErrorMessage(error.message);
     } else {
-      setMemories(data ?? []);
+      setStoreysFromCloud(data ?? []);
     }
 
     setProfileName(getProfileDisplayName(profile ?? null));
@@ -73,15 +73,15 @@ export default function MemoriesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void loadMemories();
-    }, [loadMemories]),
+      void loadStoreys();
+    }, [loadStoreys]),
   );
 
-  const moments = useMemo(() => buildArchiveMoments(memories), [memories]);
-  const themes = useMemo(() => getThemeAggregates(moments), [moments]);
-  const people = useMemo(() => getPersonAggregates(moments), [moments]);
-  const timeItems = useMemo(() => getTimeAggregates(moments), [moments]);
-  const periods = useMemo(() => getArchivePeriods(moments), [moments]);
+  const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
+  const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
+  const people = useMemo(() => getPersonAggregates(storeys), [storeys]);
+  const timeItems = useMemo(() => getTimeAggregates(storeys), [storeys]);
+  const periods = useMemo(() => getArchivePeriods(storeys), [storeys]);
   const firstName = getFirstName(profileName || session?.user.email);
 
   async function signOut() {
@@ -96,7 +96,7 @@ export default function MemoriesScreen() {
   }
 
   function setLens(nextLens: ArchiveLens) {
-    router.push(`/memories?lens=${nextLens}` as Href);
+    router.push(`/archive?lens=${nextLens}` as Href);
   }
 
   return (
@@ -117,11 +117,16 @@ export default function MemoriesScreen() {
           <View style={[styles.topRow, isPhone && styles.topRowPhone]}>
             {isPhone ? <View style={styles.mobileTopSpacer} /> : <MenuButton onPress={() => setIsDrawerOpen(true)} />}
             <StoreyboxWordmark />
-            <Text style={styles.privateLabel}>PRIVATE</Text>
+            <View style={styles.topActions}>
+              <Pressable onPress={() => router.push('/archive/search' as Href)} style={styles.searchPill}>
+                <Text style={styles.searchText}>Find something</Text>
+              </Pressable>
+              <Text style={styles.privateLabel}>PRIVATE</Text>
+            </View>
           </View>
 
-          <Text style={[styles.title, isPhone && styles.titlePhone]}>Memories</Text>
-          <Text style={styles.countLine}>{memories.length} moments kept, all yours.</Text>
+          <Text style={[styles.title, isPhone && styles.titlePhone]}>Archive</Text>
+          <Text style={styles.countLine}>{storeysFromCloud.length} Storeys kept.</Text>
 
           <LensSwitch activeLens={activeLens} isCompact={isPhone} onChange={setLens} />
 
@@ -139,7 +144,7 @@ export default function MemoriesScreen() {
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'time' ? (
-            <TimeLens isCompact={isPhone} moments={moments} periods={periods} router={router} />
+            <TimeLens isCompact={isPhone} periods={periods} router={router} storeys={storeys} />
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'themes' ? (
@@ -153,16 +158,16 @@ export default function MemoriesScreen() {
       </View>
 
       {isPhone ? (
-        <BottomTabBar activeTab="memories" />
+        <BottomTabBar activeTab="archive" />
       ) : (
         <StoreyboxDrawer
           isOpen={isDrawerOpen}
           isSigningOut={isSigningOut}
-          memoryCount={memories.length}
           onClose={() => setIsDrawerOpen(false)}
           onNavigate={navigate}
           onSignOut={() => void signOut()}
           returningThemes={themes.slice(0, 4).map((theme) => theme.name)}
+          storeyCount={storeysFromCloud.length}
           avatarUrl={profileAvatarUrl}
           userInitial={firstName.slice(0, 1).toUpperCase()}
           userName={profileName || session?.user.email}
@@ -246,18 +251,18 @@ function LensSwitch({
 }) {
   return (
     <View style={[styles.lensSwitch, isCompact && styles.lensSwitchPhone]}>
-      {(['time', 'themes', 'people'] as ArchiveLens[]).map((lens) => (
+      {(['time', 'themes', 'people'] as ArchiveLens[]).map((nextLens) => (
         <Pressable
-          key={lens}
-          onPress={() => onChange(lens)}
+          key={nextLens}
+          onPress={() => onChange(nextLens)}
           style={[
             styles.lensPill,
             isCompact && styles.lensPillPhone,
-            activeLens === lens && styles.lensPillActive,
+            activeLens === nextLens && styles.lensPillActive,
           ]}
         >
-          <Text style={[styles.lensText, activeLens === lens && styles.lensTextActive]}>
-            {lens.slice(0, 1).toUpperCase() + lens.slice(1)}
+          <Text style={[styles.lensText, activeLens === nextLens && styles.lensTextActive]}>
+            {nextLens.slice(0, 1).toUpperCase() + nextLens.slice(1)}
           </Text>
         </Pressable>
       ))}
@@ -267,17 +272,17 @@ function LensSwitch({
 
 function TimeLens({
   isCompact = false,
-  moments,
   periods,
   router,
+  storeys,
 }: {
   isCompact?: boolean;
-  moments: ArchiveMoment[];
   periods: ReturnType<typeof getArchivePeriods>;
   router: ReturnType<typeof useRouter>;
+  storeys: ArchiveMoment[];
 }) {
-  if (!moments.length) {
-    return <EmptyLens message="Your memories will gather by season here." />;
+  if (!storeys.length) {
+    return <EmptyLens message="Your Storeys will gather by season here." />;
   }
 
   return (
@@ -290,14 +295,14 @@ function TimeLens({
               <Text style={styles.periodTitle}>{period.label}</Text>
               <Text style={styles.periodSub}>{period.sub}</Text>
             </View>
-            <Text style={styles.periodCount}>{period.count} moments</Text>
+            <Text style={styles.periodCount}>{period.count} Storeys</Text>
           </View>
           <Text style={styles.periodThemes}>{period.themes}</Text>
           <View style={styles.highlights}>
             {period.highlights.map((highlight) => (
               <Pressable
                 key={highlight.id}
-                onPress={() => router.push(`/memories/${highlight.id}` as Href)}
+                onPress={() => router.push(`/archive/${highlight.id}` as Href)}
               >
                 <Text style={styles.highlight}>— {highlight.title}</Text>
               </Pressable>
@@ -365,7 +370,7 @@ function PeopleLens({
             <Text style={styles.personInitial}>{person.initial ?? person.name.slice(0, 1)}</Text>
           </View>
           <Text style={styles.personName}>{person.name}</Text>
-          <Text style={styles.personCount}>{person.count}</Text>
+          <Text style={styles.personCount}>{person.count} Storeys</Text>
         </Pressable>
       ))}
     </View>
@@ -486,7 +491,7 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   mainPhone: {
-    paddingBottom: 150,
+    paddingBottom: 96,
     paddingHorizontal: 24,
     paddingTop: 20,
   },
@@ -505,12 +510,23 @@ const styles = StyleSheet.create({
   mobileTopSpacer: {
     width: 44,
   },
-  wordmark: {
-    color: colors.blue,
-    fontFamily: fonts.mono,
+  topActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  searchPill: {
+    borderColor: '#DDE4EA',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  searchText: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
     fontSize: 12,
-    fontWeight: '400',
-    letterSpacing: 3.12,
+    fontWeight: '500',
   },
   privateLabel: {
     color: '#A6A092',
@@ -585,13 +601,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   periodNode: {
-    borderRadius: 5.5,
-    boxShadow: `0 0 0 4px ${colors.background}`,
-    height: 11,
-    left: -32.5,
+    borderColor: colors.background,
+    borderRadius: 9.5,
+    borderWidth: 4,
+    height: 19,
+    left: -36.5,
     position: 'absolute',
-    top: 30,
-    width: 11,
+    top: 26,
+    width: 19,
   },
   periodHead: {
     alignItems: 'baseline',
@@ -759,25 +776,25 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    marginTop: 24,
+    marginTop: 26,
     padding: 22,
   },
   emptyLensText: {
     color: colors.muted,
     fontFamily: fonts.serif,
-    fontSize: 20,
+    fontSize: 18,
     fontStyle: 'italic',
-    lineHeight: 28,
+    lineHeight: 25,
   },
   feedback: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 34,
   },
   feedbackText: {
     color: colors.muted,
     fontFamily: fonts.sans,
-    fontSize: 15,
-    marginTop: 12,
+    fontSize: 14,
+    marginTop: 10,
   },
   notice: {
     backgroundColor: colors.dangerSurface,

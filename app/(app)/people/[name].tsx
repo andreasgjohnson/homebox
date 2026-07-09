@@ -9,7 +9,6 @@ import {
   Text,
   useWindowDimensions,
   View,
-  type ViewStyle,
 } from 'react-native';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
@@ -18,17 +17,9 @@ import {
   fromSlug,
   type ArchiveMoment,
 } from '@/lib/archiveView';
-import { listMemories, type MemoryListItem } from '@/lib/memories';
+import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
-
-const glowStyle = {
-  backgroundImage: 'radial-gradient(ellipse,#c7dcec,transparent 68%)',
-} as unknown as ViewStyle;
-
-const washStyle = {
-  backgroundImage: 'linear-gradient(180deg,#eaf1f7,#eef3f7)',
-} as unknown as ViewStyle;
 
 export default function PersonScreen() {
   const { name } = useLocalSearchParams<{ name?: string }>();
@@ -36,24 +27,24 @@ export default function PersonScreen() {
   const { session } = useAuth();
   const { width } = useWindowDimensions();
   const isPhone = width < 700;
-  const [memories, setMemories] = useState<MemoryListItem[]>([]);
+  const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const personName = fromSlug(name) || 'Dad';
 
-  const loadMemories = useCallback(async () => {
+  const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
     setIsLoading(true);
     setErrorMessage(null);
-    const { data, error } = await listMemories(session.user.id);
+    const { data, error } = await listStoreys(session.user.id);
 
     if (error) {
       setErrorMessage(error.message);
     } else {
-      setMemories(data ?? []);
+      setStoreysFromCloud(data ?? []);
     }
 
     setIsLoading(false);
@@ -61,34 +52,34 @@ export default function PersonScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void loadMemories();
-    }, [loadMemories]),
+      void loadStoreys();
+    }, [loadStoreys]),
   );
 
-  const moments = useMemo(() => buildArchiveMoments(memories), [memories]);
+  const moments = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const matchingMoments = moments.filter((moment) =>
     moment.people.some((person) => person.toLowerCase() === personName.toLowerCase()),
   );
-  const visibleMoments = matchingMoments.length ? matchingMoments : moments.slice(0, 4);
+  const visibleMoments = matchingMoments;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
         <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
-          <Pressable onPress={() => router.push('/memories?lens=people' as Href)} style={styles.backLink}>
+          <Pressable onPress={() => router.push('/archive?lens=people' as Href)} style={styles.backLink}>
             <Text style={styles.backChevron}>‹</Text>
-            <Text style={styles.backText}>Memories</Text>
+            <Text style={styles.backText}>Archive</Text>
           </Pressable>
           <StoreyboxWordmark />
           <Text style={styles.privateLabel}>PRIVATE</Text>
         </View>
 
         <View style={[styles.header, isPhone && styles.headerPhone]}>
-          <View style={[styles.glow, isPhone && styles.glowPhone, glowStyle]} />
+          <View style={[styles.glow, isPhone && styles.glowPhone]} />
           <View style={[styles.avatar, isPhone && styles.avatarPhone]}>
             <Text style={styles.avatarInitial}>{personName.slice(0, 1).toUpperCase()}</Text>
           </View>
-          <Text style={styles.eyebrow}>PERSON · {visibleMoments.length} MOMENTS</Text>
+          <Text style={styles.eyebrow}>PERSON · {visibleMoments.length} STOREYS</Text>
           <Text style={[styles.title, isPhone && styles.titlePhone]}>{personName}</Text>
         </View>
 
@@ -105,7 +96,7 @@ export default function PersonScreen() {
           </View>
         ) : null}
 
-        {!isLoading && !errorMessage ? (
+        {!isLoading && !errorMessage && visibleMoments.length ? (
           <>
             <TrendPanel personName={personName} />
             <TexturePanel />
@@ -120,8 +111,28 @@ export default function PersonScreen() {
             </View>
           </>
         ) : null}
+
+        {!isLoading && !errorMessage && !visibleMoments.length ? (
+          <EmptyState
+            body={
+              moments.length
+                ? 'No Storeys in your archive mention this person yet.'
+                : 'People will appear here after your Box syncs Storeys.'
+            }
+            title={`No Storeys for ${personName} yet.`}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function EmptyState({ body, title }: { body: string; title: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyText}>{body}</Text>
+    </View>
   );
 }
 
@@ -131,7 +142,7 @@ function TrendPanel({ personName }: { personName: string }) {
   const bars = [13, 26, 13, 26, 39, 52];
 
   return (
-    <View style={[styles.trendPanel, isPhone && styles.trendPanelPhone, washStyle]}>
+    <View style={[styles.trendPanel, isPhone && styles.trendPanelPhone]}>
       <View style={styles.trendHead}>
         <Text style={styles.trendLabel}>HOW OFTEN YOU REFLECT ON {personName.toUpperCase()}</Text>
         <Text style={styles.trendRange}>Past 6 months</Text>
@@ -190,7 +201,7 @@ function PeriodDivider({ count, label }: { count: number; label: string }) {
     <View style={styles.periodDivider}>
       <Text style={styles.periodLabel}>{label}</Text>
       <View style={styles.periodRule} />
-      <Text style={styles.periodCount}>{count} moments</Text>
+      <Text style={styles.periodCount}>{count} Storeys</Text>
     </View>
   );
 }
@@ -211,7 +222,7 @@ function MomentCards({
       {moments.map((moment) => (
         <Pressable
           key={moment.id}
-          onPress={() => router.push(`/memories/${moment.id}` as Href)}
+          onPress={() => router.push(`/archive/${moment.id}` as Href)}
           style={[styles.card, { borderLeftColor: moment.textureColor }]}
         >
           <View style={styles.cardBody}>
@@ -221,6 +232,7 @@ function MomentCards({
             </View>
             <Text style={styles.cardTitle}>{moment.title}</Text>
             <Text style={styles.cardExcerpt}>“{moment.excerpt}”</Text>
+            <Text style={styles.cardProvenance}>KEPT AT HOME · Captured by your Box</Text>
           </View>
           <Text style={styles.duration}>3:48</Text>
         </Pressable>
@@ -547,6 +559,15 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 21.75,
   },
+  cardProvenance: {
+    color: '#B0A894',
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    fontWeight: '400',
+    letterSpacing: 0.54,
+    lineHeight: 9,
+    marginTop: 8,
+  },
   duration: {
     alignSelf: 'center',
     color: '#A6A092',
@@ -599,5 +620,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 30,
+  },
+  emptyTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    fontWeight: '400',
+    lineHeight: 29,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

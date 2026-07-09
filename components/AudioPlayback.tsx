@@ -14,7 +14,7 @@ type AudioPlaybackProps = {
 
 export function AudioPlayback({
   disabled = false,
-  emptyText = 'Record audio to enable playback.',
+  emptyText = 'Audio will appear when this Storey syncs.',
   title = 'Playback',
   uri,
 }: AudioPlaybackProps) {

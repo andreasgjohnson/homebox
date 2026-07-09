@@ -17,11 +17,11 @@ import {
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
-  createMemoryAudioSignedUrl,
-  isUploadedMemoryAudioPath,
-  removeMemoryAudio,
-} from '@/lib/audioStorage';
-import { deleteMemory, getMemory, updateMemoryTitle, type Memory } from '@/lib/memories';
+  createStoreyAudioSignedUrl,
+  isUploadedStoreyAudioPath,
+  removeStoreyAudio,
+} from '@/lib/storeyAudio';
+import { deleteStorey, getStorey, updateStoreyTitle, type Storey } from '@/lib/storeys';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -38,13 +38,13 @@ type MarkedMoment = {
   t: string;
 };
 
-export default function MemoryDetailScreen() {
+export default function StoreyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
   const { width } = useWindowDimensions();
   const isPhone = width < 700;
-  const [memory, setMemory] = useState<Memory | null>(null);
+  const [storey, setStorey] = useState<Storey | null>(null);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [playbackErrorMessage, setPlaybackErrorMessage] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
@@ -57,7 +57,7 @@ export default function MemoryDetailScreen() {
   const player = useAudioPlayer(playbackUri ?? null, { updateInterval: 500 });
   const playerStatus = useAudioPlayerStatus(player);
 
-  const loadMemory = useCallback(async () => {
+  const loadStorey = useCallback(async () => {
     if (!session?.user.id || !id) {
       return;
     }
@@ -65,12 +65,12 @@ export default function MemoryDetailScreen() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const { data, error } = await getMemory(id, session.user.id);
+    const { data, error } = await getStorey(id, session.user.id);
 
     if (error) {
       setErrorMessage(error.message);
     } else {
-      setMemory(data);
+      setStorey(data);
       setTitleDraft(data.title || '');
     }
 
@@ -78,8 +78,8 @@ export default function MemoryDetailScreen() {
   }, [id, session?.user.id]);
 
   useEffect(() => {
-    void loadMemory();
-  }, [loadMemory]);
+    void loadStorey();
+  }, [loadStorey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,16 +88,16 @@ export default function MemoryDetailScreen() {
       setPlaybackUri(null);
       setPlaybackErrorMessage(null);
 
-      if (!memory?.audio_url) {
+      if (!storey?.audio_url) {
         return;
       }
 
-      if (!isUploadedMemoryAudioPath(memory.audio_url)) {
-        setPlaybackUri(memory.audio_url);
+      if (!isUploadedStoreyAudioPath(storey.audio_url)) {
+        setPlaybackUri(storey.audio_url);
         return;
       }
 
-      const { data, error } = await createMemoryAudioSignedUrl(memory.audio_url);
+      const { data, error } = await createStoreyAudioSignedUrl(storey.audio_url);
 
       if (!isMounted) {
         return;
@@ -116,11 +116,11 @@ export default function MemoryDetailScreen() {
     return () => {
       isMounted = false;
     };
-  }, [memory?.audio_url]);
+  }, [storey?.audio_url]);
 
-  const markedMoments = useMemo(() => getMarkedMoments(memory), [memory]);
-  const wordCount = useMemo(() => getWordCount(memory?.transcript), [memory?.transcript]);
-  const summary = personalizeSummary(memory?.summary);
+  const markedMoments = useMemo(() => getMarkedMoments(storey), [storey]);
+  const wordCount = useMemo(() => getWordCount(storey?.transcript), [storey?.transcript]);
+  const summary = personalizeSummary(storey?.summary);
   const duration = playerStatus.duration || 100;
   const canPlay = Boolean(playbackUri);
 
@@ -146,12 +146,12 @@ export default function MemoryDetailScreen() {
     player.play();
   }
 
-  async function confirmDeleteMemory() {
-    if (!session?.user.id || !memory) {
+  async function confirmDeleteStorey() {
+    if (!session?.user.id || !storey) {
       return;
     }
 
-    const shouldDelete = await confirmDelete(memory.title || 'Untitled memory');
+    const shouldDelete = await confirmDelete(storey.title || 'Untitled Storey');
 
     if (!shouldDelete) {
       return;
@@ -160,11 +160,10 @@ export default function MemoryDetailScreen() {
     setIsDeleting(true);
     setErrorMessage(null);
 
-    if (memory.audio_url && isUploadedMemoryAudioPath(memory.audio_url)) {
-      await removeMemoryAudio(memory.audio_url);
-    }
+    const uploadedAudioPath =
+      storey.audio_url && isUploadedStoreyAudioPath(storey.audio_url) ? storey.audio_url : null;
 
-    const { error } = await deleteMemory(memory.id, session.user.id);
+    const { error } = await deleteStorey(storey.id, session.user.id);
 
     if (error) {
       setErrorMessage(error.message);
@@ -172,20 +171,28 @@ export default function MemoryDetailScreen() {
       return;
     }
 
-    router.replace('/memories' as Href);
+    if (uploadedAudioPath) {
+      const { error: storageError } = await removeStoreyAudio(uploadedAudioPath);
+
+      if (storageError) {
+        reportAudioCleanupIssue(storageError.message);
+      }
+    }
+
+    router.replace('/archive' as Href);
   }
 
   async function saveTitle() {
-    if (!session?.user.id || !memory) {
+    if (!session?.user.id || !storey) {
       return;
     }
 
-    const nextTitle = titleDraft.trim() || 'Untitled memory';
+    const nextTitle = titleDraft.trim() || 'Untitled Storey';
 
     setIsSavingTitle(true);
     setErrorMessage(null);
 
-    const { data, error } = await updateMemoryTitle(memory.id, session.user.id, nextTitle);
+    const { data, error } = await updateStoreyTitle(storey.id, session.user.id, nextTitle);
 
     if (error) {
       setErrorMessage(error.message);
@@ -193,7 +200,7 @@ export default function MemoryDetailScreen() {
       return;
     }
 
-    setMemory(data);
+    setStorey(data);
     setTitleDraft(data.title || '');
     setIsEditingTitle(false);
     setIsSavingTitle(false);
@@ -202,14 +209,14 @@ export default function MemoryDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
-        <Pressable onPress={() => router.replace('/memories' as Href)} style={styles.backLink}>
+        <Pressable onPress={() => router.replace('/archive' as Href)} style={styles.backLink}>
           <Text style={styles.backChevron}>‹</Text>
-          <Text style={styles.backText}>Memories</Text>
+          <Text style={styles.backText}>Archive</Text>
         </Pressable>
         <StoreyboxWordmark />
         <View style={styles.privateWrap}>
           <Text style={styles.privateLabel}>PRIVATE</Text>
-          <Pressable disabled={isDeleting} onPress={() => void confirmDeleteMemory()}>
+          <Pressable disabled={isDeleting} onPress={() => void confirmDeleteStorey()}>
             {isDeleting ? (
               <ActivityIndicator color={colors.faint} />
             ) : (
@@ -226,7 +233,7 @@ export default function MemoryDetailScreen() {
         {isLoading ? (
           <View style={styles.feedback}>
             <ActivityIndicator color={colors.ink} />
-            <Text style={styles.feedbackText}>Opening memory...</Text>
+              <Text style={styles.feedbackText}>Opening Storey...</Text>
           </View>
         ) : null}
 
@@ -236,19 +243,21 @@ export default function MemoryDetailScreen() {
           </View>
         ) : null}
 
-        {!isLoading && memory ? (
+        {!isLoading && storey ? (
           <>
             <View style={styles.header}>
+              <Text style={styles.provenanceLabel}>KEPT AT HOME</Text>
               <Text style={styles.dateLine}>
-                {formatDetailDate(memory.recorded_at)} · {formatAudioTime(duration)}
+                {formatDetailDate(storey.recorded_at)} · {formatAudioTime(duration)}
               </Text>
+              <Text style={styles.capturedBy}>Captured by your Box</Text>
               {isEditingTitle ? (
                 <View style={styles.titleEditor}>
                   <TextInput
                     autoCapitalize="sentences"
                     editable={!isSavingTitle}
                     onChangeText={setTitleDraft}
-                    placeholder="Untitled memory"
+                    placeholder="Untitled Storey"
                     placeholderTextColor={colors.faint}
                     returnKeyType="done"
                     style={styles.titleInput}
@@ -267,7 +276,7 @@ export default function MemoryDetailScreen() {
                   </Pressable>
                 </View>
               ) : (
-                <Text style={styles.title}>{memory.title || 'Untitled memory'}</Text>
+                <Text style={styles.title}>{storey.title || 'Untitled Storey'}</Text>
               )}
             </View>
 
@@ -340,25 +349,25 @@ export default function MemoryDetailScreen() {
             </Pressable>
 
             {isTranscriptOpen ? (
-              <Text style={styles.transcript}>{memory.transcript || 'No transcript yet.'}</Text>
+              <Text style={styles.transcript}>{storey.transcript || 'No transcript yet.'}</Text>
             ) : null}
 
             <Text style={styles.sectionLabel}>THEMES</Text>
             <View style={styles.chipRow}>
-              {(memory.tags?.length ? memory.tags : ['draft']).map((tag) => (
+              {(storey.tags?.length ? storey.tags : ['draft']).map((tag) => (
                 <View key={tag} style={styles.chip}>
                   <Text style={styles.chipText}>{tag}</Text>
                 </View>
               ))}
-              {memory.emotional_tone ? (
+              {storey.emotional_tone ? (
                 <View style={styles.textureChip}>
                   <View
                     style={[
                       styles.textureDot,
-                      { backgroundColor: getTextureColor(memory.emotional_tone) },
+                      { backgroundColor: getTextureColor(storey.emotional_tone) },
                     ]}
                   />
-                  <Text style={styles.chipText}>{memory.emotional_tone}</Text>
+                  <Text style={styles.chipText}>{storey.emotional_tone}</Text>
                 </View>
               ) : null}
             </View>
@@ -385,13 +394,13 @@ export default function MemoryDetailScreen() {
   );
 }
 
-function getMarkedMoments(memory: Memory | null): MarkedMoment[] {
-  const quotes = memory?.memorable_quotes?.length
-    ? memory.memorable_quotes
-    : splitSummary(memory?.summary).slice(0, 4);
+function getMarkedMoments(storey: Storey | null): MarkedMoment[] {
+  const quotes = storey?.memorable_quotes?.length
+    ? storey.memorable_quotes
+    : splitSummary(storey?.summary).slice(0, 4);
   const times = [9, 41, 68, 87];
 
-  return (quotes.length ? quotes : ['This memory is still being processed.']).slice(0, 4).map((quote, index) => ({
+  return (quotes.length ? quotes : ['This Storey is still being processed.']).slice(0, 4).map((quote, index) => ({
     quote: quote.replace(/^["“]|["”]$/g, ''),
     seconds: times[index] ?? 9,
     t: formatAudioTime(times[index] ?? 9),
@@ -451,11 +460,22 @@ function confirmDelete(title: string) {
   }
 
   return new Promise<boolean>((resolve) => {
-    Alert.alert('Delete memory?', `Delete "${title}" from your archive?`, [
+    Alert.alert('Delete Storey?', `Delete "${title}" from your archive?`, [
       { style: 'cancel', text: 'Cancel', onPress: () => resolve(false) },
       { style: 'destructive', text: 'Delete', onPress: () => resolve(true) },
     ]);
   });
+}
+
+function reportAudioCleanupIssue(message: string) {
+  const text = `The Storey was deleted, but its private audio could not be removed automatically. ${message}`;
+
+  if (Platform.OS === 'web') {
+    globalThis.alert(text);
+    return;
+  }
+
+  Alert.alert('Audio cleanup needed', text);
 }
 
 const styles = StyleSheet.create({
@@ -536,14 +556,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 32,
   },
-  dateLine: {
-    color: '#A6A092',
+  provenanceLabel: {
+    color: colors.blue,
     fontFamily: fonts.mono,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '400',
-    letterSpacing: 1.76,
-    lineHeight: 11,
-    marginBottom: 12,
+    letterSpacing: 2.2,
+    lineHeight: 10,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  dateLine: {
+    color: colors.blue,
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    lineHeight: 12,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  capturedBy: {
+    color: '#9AA1AB',
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 12,
+    marginBottom: 18,
     textAlign: 'center',
   },
   title: {
