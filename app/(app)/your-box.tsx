@@ -1,12 +1,39 @@
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type Href, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import { BoxIllustration, BoxStatusBadge } from '@/components/BoxHardware';
-import { defaultBox, getBoxStateDetail } from '@/lib/box';
+import { defaultBox, fetchPrimaryStoreyBox, getBoxStateDetail, type StoreyBox } from '@/lib/box';
 import { colors, fonts } from '@/lib/theme';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function YourBoxScreen() {
-  const box = defaultBox;
+  const router = useRouter();
+  const { session } = useAuth();
+  const [box, setBox] = useState<StoreyBox>(defaultBox);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadBox = useCallback(async () => {
+    if (!session?.user.id) {
+      return;
+    }
+
+    setIsLoading(true);
+    const { box: userBox, error } = await fetchPrimaryStoreyBox(session.user.id);
+
+    setBox(userBox);
+    setErrorMessage(error);
+    setIsLoading(false);
+  }, [session?.user.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBox();
+    }, [loadBox]),
+  );
+
   const boxDetail = getBoxStateDetail(box);
   const isPaired = box.state !== 'unpaired';
 
@@ -25,8 +52,19 @@ export default function YourBoxScreen() {
             <BoxIllustration size={118} ledColor={boxDetail.ledColor} />
           </View>
           <Text style={styles.boxName}>{box.name}</Text>
-          <BoxStatusBadge box={box} />
+          {isLoading ? <ActivityIndicator color={colors.ink} /> : <BoxStatusBadge box={box} />}
+          {!isLoading && !isPaired ? (
+            <Pressable onPress={() => router.push('/pair-box' as Href)} style={styles.pairButton}>
+              <Text style={styles.pairButtonText}>Pair your Box</Text>
+            </Pressable>
+          ) : null}
         </View>
+
+        {errorMessage ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.table}>
           {[
@@ -159,6 +197,34 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 31,
     marginBottom: 8,
+  },
+  pairButton: {
+    alignItems: 'center',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    marginTop: 16,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+  },
+  pairButtonText: {
+    color: colors.background,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  notice: {
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.dangerBorder,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+    padding: 16,
+  },
+  noticeText: {
+    color: colors.danger,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 20,
   },
   table: {
     borderColor: colors.border,
