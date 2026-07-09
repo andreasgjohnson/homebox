@@ -70,6 +70,15 @@ Hardware tables (`boxes`, `box_memberships`, `box_credentials`,
 - Supabase Auth, Postgres, Storage, Row Level Security, Edge Functions
 - EAS for iOS builds
 
+## Box Firmware
+
+The ESP32 firmware lives in
+[firmware/storeybox_esp32](firmware/storeybox_esp32). It targets a classic
+ESP32 DevKit with an INMP441 microphone, MAX98357A speaker amp, WS2812 status
+ring, and GPIO record button. The sketch generates its own P-256 device key,
+prints provisioning SQL, pairs through `box-api`, records WAV audio to LittleFS,
+and syncs Storeys through signed upload URLs.
+
 ## Local Setup
 
 1. Create a Supabase project.

@@ -16,3 +16,4 @@ transcripts/
 expo-env.d.ts
 # @end expo-cli
 supabase/.temp/
+firmware/storeybox_esp32/config.h
