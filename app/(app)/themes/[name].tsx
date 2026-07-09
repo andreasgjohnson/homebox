@@ -203,7 +203,7 @@ function MomentCards({
             </View>
             <Text style={styles.cardTitle}>{moment.title}</Text>
             <Text style={styles.cardExcerpt}>“{moment.excerpt}”</Text>
-            <Text style={styles.cardProvenance}>KEPT AT HOME · Captured by your Box</Text>
+            <Text style={styles.cardProvenance}>{moment.provenanceLabel}</Text>
           </View>
           <Text style={styles.duration}>3:48</Text>
         </Pressable>

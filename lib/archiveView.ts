@@ -1,6 +1,6 @@
 import { getTextureColor } from '@/lib/theme';
 
-import type { StoreyListItem } from './storeys';
+import { getStoreyProvenance, type StoreyListItem } from './storeys';
 
 export type ArchiveLens = 'time' | 'themes' | 'people';
 
@@ -9,6 +9,7 @@ export type ArchiveMoment = {
   id: string;
   people: string[];
   primaryTheme: string;
+  provenanceLabel: string;
   recordedAt: string;
   recordedDate: Date;
   stamp: string;
@@ -57,6 +58,7 @@ export function buildArchiveMoments(storeys: StoreyListItem[]): ArchiveMoment[] 
       id: storey.id,
       people: inferPeople(`${storey.title ?? ''} ${storey.summary ?? ''} ${tags.join(' ')}`),
       primaryTheme: tags[0] ?? defaultTheme,
+      provenanceLabel: getStoreyProvenance(storey).label,
       recordedAt: storey.recorded_at,
       recordedDate,
       stamp: formatStoreyStamp(storey.recorded_at),

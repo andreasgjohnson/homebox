@@ -178,7 +178,7 @@ export default function HomeScreen() {
                       <Text numberOfLines={1} style={styles.storeyExcerpt}>
                         "{storey.excerpt}"
                       </Text>
-                      <Text style={styles.provenance}>KEPT AT HOME · Captured by {capturedByLabel}</Text>
+                      <Text style={styles.provenance}>{storey.provenanceLabel}</Text>
                     </View>
                     <View style={styles.storeySide}>
                       <Text style={styles.duration}>2:14</Text>
