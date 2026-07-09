@@ -1,185 +1,74 @@
-# Storeybox Home
+# Storeybox
 
-Storeybox Home, also called the home box app, is a private voice-first memory
-archive. It helps someone capture small spoken memories, then turns those
-recordings into a calm personal archive with transcripts, summaries, themes,
-emotional texture, memorable quotes, people, and time-based views.
+Storeybox is a hardware-first memory archive. The physical Storeybox Box
+captures spoken memories at home; this repository contains the companion
+iPhone/Expo app and the Supabase backend that the Box and the app share.
 
-This README is written as context you can give to ChatGPT when brainstorming
-new, different features for the app.
+## Product Rule
 
-## ChatGPT Brainstorming Context
+**The Box records. The app does not.**
 
-You are brainstorming features for Storeybox Home, a private memory preservation
-app. The product is not a generic notes app, social app, journaling streak app,
-or productivity tool. It should feel like a quiet heirloom archive: personal,
-emotionally intelligent, private by default, and useful over years.
+The iPhone app never captures audio. It is a companion/archive app: it pairs
+the Box to an account, reflects Box status, and lets the owner browse and play
+back the Storeys the Box brings home. Do not reintroduce microphone capture UI,
+phone recording flows, or client-side upload of local recordings. See
+[docs/ARCHITECTURE_TRANSITION.md](docs/ARCHITECTURE_TRANSITION.md) for the full
+keep/remove guidance.
 
-The current app lets a person record audio memories. After recording, the app
-uploads the private audio, transcribes it with AI, generates a human title and
-summary, extracts tags/themes, identifies an emotional tone, and saves memorable
-quotes. The user can browse their archive by time, by theme, and by people who
-come up in memories. The home screen offers a reflective dashboard insight such
-as "Home has been on your mind" based on recent recordings.
+## Product Language
 
-The app's emotional promise is:
+- **Box** — the physical Storeybox hardware.
+- **Storey** — a saved audio memory: playback, transcript, summary, tags,
+  emotional texture, memorable quotes, and provenance.
+- **Archive** — the collection of Storeys, browsable by time, theme, and
+  people.
+- **Your Box** — the app surface for pairing, status, and settings.
 
-- Your story stays yours.
-- Your memories become easier to revisit without becoming performative.
-- The app helps you notice patterns in your life, relationships, places, and
-  feelings.
-- It should preserve the user's voice and life context, not flatten everything
-  into generic AI summaries.
+## How It Works
 
-The best feature ideas should respect privacy, intimacy, and long-term memory.
-Avoid ideas that turn the app into social media, gamified productivity, public
-sharing, ads, engagement bait, or a cluttered dashboard.
+1. A user signs in with a Supabase magic link (native deep link:
+   `storeybox://auth/callback`).
+2. The user pairs their Box from the app.
+3. The Box sends signed heartbeats and status to the backend through the
+   `box-api` Edge Function (per-device credentials; see
+   [docs/HARDWARE_API_CONTRACT.md](docs/HARDWARE_API_CONTRACT.md)).
+4. When someone presses the Box, it opens a recording session, uploads audio
+   directly to private storage via a short-lived signed URL, and the backend
+   queues processing.
+5. Processing produces the transcript, summary, tags, and provenance for the
+   Storey.
+6. The app reads Storeys and Box status through Supabase Auth and RLS — read
+   paths only; hardware writes go through Edge Functions, never the app.
 
-## Product Shape
+## App Surfaces
 
-Storeybox Home is built around a few core moments:
+- Home daybook with Box presence and recent Storeys.
+- Your Box: pairing, connection status, last sync, notification settings.
+- Archive with time, theme, and people lenses, plus search.
+- Storey detail: playback, transcript, summary, texture, quotes.
+- Theme and person detail pages.
+- Profile settings.
 
-1. A new user is welcomed by Storey, the app's warm guide, and prompted to say
-   hello.
-2. That first hello recording stays local until the user verifies an email magic
-   link.
-3. Once signed in, the hello becomes the first private memory in the archive.
-4. The user can record more memories from the home screen.
-5. Each memory becomes audio playback, transcript, summary, title, emotional
-   tone, tags, and memorable quotes.
-6. The archive reorganizes those memories into time, theme, and people views.
+## Backend Compatibility Layer
 
-The product is currently focused on web and Expo app experiences, with a calm
-visual language: warm paper backgrounds, blue-gray archive tones, subtle gold
-accents, serif display type, quiet mono labels, and spacious heirloom-style
-layouts.
+Some backend names are intentionally legacy — do not rename them casually:
 
-## Current User-Facing Features
+- `public.memories` is the current Storey table (`source='legacy'` marks
+  pre-hardware rows).
+- `memory-audio` is the private audio bucket; `memories.audio_url` stores a
+  bucket-relative path (`{user_id}/{storey_id}/audio.m4a`).
+- The `process-memory` Edge Function remains until the server-side processing
+  path fully replaces it.
 
-- Magic-link authentication through Supabase.
-- First-memory onboarding flow that records before signup, waits for email
-  verification, then finalizes the memory after authentication.
-- Audio recording with microphone permissions.
-- Private audio upload to Supabase Storage.
-- AI transcription and memory summarization through a Supabase Edge Function.
-- Memory detail page with audio playback, title editing, summary, transcript,
-  emotional tone, tags, memorable quotes, and delete support.
-- Home dashboard with greeting, reflective insight, prominent record action,
-  recent memories, top theme, texture, and person surfaced from the archive.
-- Memories index with three lenses: time, themes, and people.
-- Theme detail pages showing memories connected to a theme plus trend-style
-  panels.
-- Person detail pages showing memories connected to a person plus reflective
-  pattern panels.
-- Profile settings for first name, last name, and private profile photo.
-- Responsive layouts for phone and wider desktop/tablet screens.
-
-## Current Data Model
-
-The main database tables are:
-
-- `profiles`: one row per user, with display name, first name, last name, and
-  optional avatar path.
-- `memories`: one row per memory, with title, summary, transcript,
-  emotional tone, tags, memorable quotes, audio path, recorded date, and created
-  date.
-
-Audio is stored in a private `memory-audio` Supabase Storage bucket. Profile
-photos are stored in a private `profile-photos` bucket. Row-level security and
-storage policies restrict users to their own data.
-
-## Current AI Behavior
-
-The app uses a Supabase Edge Function named `process-memory`.
-
-The function:
-
-- Verifies the signed-in user.
-- Confirms the memory belongs to that user.
-- Confirms the audio path is inside that user's private archive.
-- Downloads the audio from private storage.
-- Uses OpenAI audio transcription.
-- Uses an OpenAI chat model to produce structured memory metadata.
-- Saves title, summary, transcript, emotional tone, tags, and memorable quotes
-  back to the memory.
-
-The summarizer is instructed to use warm plain language, avoid invented details,
-write directly to the account owner in second person, and keep titles specific
-and human.
-
-## Existing Archive Concepts
-
-The app already has a few lightweight interpretation concepts:
-
-- Theme: derived from AI-generated tags, normalized into readable labels.
-- Texture: derived from emotional tone, with known values such as Hopeful,
-  Tender, Reflective, Relaxed, Warm, Curious, and Grateful.
-- People: currently inferred from memory text with a simple matcher for names
-  and family terms.
-- Time periods: recent memories are grouped into "This week," "Earlier in
-  [month]," and month/year archive periods.
-- Dashboard insight: based on the top recurring theme.
-
-These are early patterns, not finished product boundaries. Feature ideas can
-deepen them.
-
-## Feature Brainstorming Directions
-
-Strong ideas for this app may involve:
-
-- Helping users ask better questions of loved ones.
-- Turning memories into gentle timelines, relationship maps, or life chapters.
-- Letting users revisit past memories at meaningful moments.
-- Detecting recurring places, people, themes, rituals, seasons, or unresolved
-  questions.
-- Preserving voice, accents, phrases, and original audio as first-class memory
-  material.
-- Creating private prompts that respond to the user's actual archive.
-- Supporting families without making the archive public or social by default.
-- Adding export, inheritance, legacy, or trusted-contact flows.
-- Improving search and retrieval across transcripts, quotes, people, dates, and
-  feelings.
-- Making the AI feel like a careful archivist rather than a chatbot companion.
-
-Weak ideas for this app include:
-
-- Public feeds, likes, followers, comments, or viral sharing.
-- Streak pressure or productivity gamification.
-- Generic journaling prompts unrelated to the user's archive.
-- AI that invents memories or over-interprets sensitive events.
-- Busy analytics dashboards that make personal memories feel clinical.
-
-## Useful Prompt To Give ChatGPT
-
-```text
-I am building Storeybox Home, a private voice-first memory archive. It records
-spoken memories, uploads the private audio, transcribes it, summarizes it, and
-organizes memories by time, theme, emotional texture, memorable quotes, and
-people. It should feel like a quiet heirloom archive, not a social app,
-productivity app, or generic journaling app.
-
-Current features include magic-link auth, first-memory onboarding, private audio
-storage, AI transcription/summarization, a home dashboard with reflective
-insights, memory detail pages with playback/transcript/quotes, archive lenses
-for time/themes/people, theme and person detail pages, and profile settings.
-
-Brainstorm new, different product features that deepen the app's purpose:
-private memory preservation, noticing life patterns, revisiting relationships,
-preserving voice, and helping people create a meaningful archive over years.
-Prioritize ideas that are emotionally resonant, privacy-preserving, practical to
-build, and meaningfully different from ordinary notes or journaling apps. Avoid
-social feeds, engagement bait, generic prompts, or features that make memories
-feel performative.
-```
+Hardware tables (`boxes`, `box_memberships`, `box_credentials`,
+`recording_sessions`, `storey_processing_jobs`, …) are documented in
+[docs/SUPABASE_HARDWARE_SCHEMA.md](docs/SUPABASE_HARDWARE_SCHEMA.md).
 
 ## Technical Stack
 
-- Expo Router
-- React Native / React Native Web
-- TypeScript
-- Supabase Auth, Postgres, Storage, Row Level Security, and Edge Functions
-- OpenAI transcription and summary generation
-- Netlify for hosted web beta builds
+- Expo Router, React Native / React Native Web, TypeScript
+- Supabase Auth, Postgres, Storage, Row Level Security, Edge Functions
+- EAS for iOS builds
 
 ## Local Setup
 
@@ -188,13 +77,17 @@ feel performative.
 3. Apply the Supabase migrations in `supabase/migrations`.
 4. Set the OpenAI API key as a Supabase Edge Function secret:
    `supabase secrets set OPENAI_API_KEY=sk-...`.
-5. Deploy the processor:
-   `supabase functions deploy process-memory`.
-6. In Supabase Auth settings, enable email magic links and add local/deployed web
-   URLs to the allowed redirect URLs.
+5. Deploy the Edge Functions:
+   `supabase functions deploy box-api`,
+   `supabase functions deploy process-storey-jobs --no-verify-jwt`, and
+   `supabase functions deploy process-memory` (legacy, kept for
+   compatibility; see `supabase/functions/process-storey-jobs/README.md`).
+6. In Supabase Auth settings, enable email magic links and add the app's
+   redirect URLs (including `storeybox://auth/callback`) to the allowed
+   redirect URLs.
 7. Install dependencies with `pnpm install`.
 8. Start the app with `pnpm start`.
 
-Never put the Supabase service-role key or OpenAI API key in an
-`EXPO_PUBLIC_*` variable. OpenAI calls belong inside
-`supabase/functions/process-memory`.
+Never put the Supabase service-role key, Box credentials, or AI API keys in an
+`EXPO_PUBLIC_*` variable or anywhere in app code. Server-side secrets belong in
+Edge Function configuration only.

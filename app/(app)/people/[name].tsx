@@ -179,7 +179,7 @@ function TexturePanel() {
 
   return (
     <View style={[styles.texturePanel, isPhone && styles.texturePanelPhone]}>
-      <Text style={styles.textureLabel}>HOW THESE MEMORIES HAVE FELT</Text>
+      <Text style={styles.textureLabel}>HOW THESE STOREYS HAVE FELT</Text>
       <View style={styles.textureMonths}>
         {textures.map((texture, index) => (
           <View key={`${texture}-${index}`} style={styles.textureMonth}>
