@@ -132,7 +132,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.footer}>
         <Pressable onPress={back} style={styles.secondaryButton}>
-          <Text style={styles.secondaryText}>{step === 0 ? 'Back' : 'Back'}</Text>
+          <Text style={styles.secondaryText}>Back</Text>
         </Pressable>
         <Pressable onPress={next} style={styles.primaryButton}>
           <Text style={styles.primaryText}>{isLastStep ? 'Finish setup' : 'Continue'}</Text>
