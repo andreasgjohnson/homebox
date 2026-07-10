@@ -18,6 +18,7 @@ export const colors = {
   blueDark: '#46627E',
   blueLine: '#CFE0EE',
   blueChip: '#E3ECF4',
+  glow: '#C7DCEC',
   danger: '#8A3F36',
   dangerSurface: '#FFF2EF',
   dangerBorder: '#E4B8A8',

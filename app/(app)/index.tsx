@@ -11,22 +11,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BoxPresenceCard } from '@/components/BoxHardware';
+import { BoxPresenceCard, BoxStatusBadge } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
 import {
   buildArchiveMoments,
   getDashboardInsight,
   getFirstName,
-  getPersonAggregates,
   getThemeAggregates,
-  toSlug,
 } from '@/lib/archiveView';
 import { defaultBox, fetchPrimaryStoreyBox, type StoreyBox } from '@/lib/box';
 import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { supabase } from '@/lib/supabase';
-import { colors, fonts, getTextureColor } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function HomeScreen() {
@@ -78,20 +76,8 @@ export default function HomeScreen() {
   const firstName = getFirstName(profileName || session?.user.email);
   const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
-  const people = useMemo(() => getPersonAggregates(storeys), [storeys]);
   const recentStoreys = storeys.slice(0, 3);
   const returnStorey = recentStoreys[0];
-  const topTheme = themes[0];
-  const topPerson = people[0];
-  const topTexture = storeys[0]?.texture ?? 'Unprocessed';
-  const recentTextures = [
-    ...new Set(
-      storeys
-        .slice(0, 5)
-        .map((storey) => storey.texture)
-        .filter((texture): texture is string => Boolean(texture)),
-    ),
-  ].slice(0, 3);
   const observation = getDashboardInsight(themes).replace('\n', ' ');
   const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
@@ -113,40 +99,57 @@ export default function HomeScreen() {
         userName={profileName || session?.user.email}
       >
         <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
-          <View style={styles.greetingWrap}>
-            <Text style={styles.greeting}>Good {getDayPart()}, {firstName}.</Text>
+          <View style={styles.pageHead}>
+            <Text style={styles.greeting}>
+              Good {getDayPart()}, {firstName}.
+            </Text>
+            <Text style={styles.pageDate}>{formatDaybookDate()}</Text>
           </View>
 
-          <BoxPresenceCard box={box} />
-
-          <View style={styles.section}>
-            <Text style={styles.eyebrow}>FOR TONIGHT</Text>
+          {box.state === 'recording' ? (
+            <BoxPresenceCard box={box} />
+          ) : (
             <Pressable
-              accessibilityLabel={
-                returnStorey ? `Listen back: ${returnStorey.title}` : 'No Storey to revisit yet'
-              }
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !returnStorey }}
-              disabled={!returnStorey}
-              onPress={() =>
-                returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
-              }
-              style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
+              accessibilityLabel="Your Box — open status"
+              accessibilityRole="link"
+              hitSlop={8}
+              onPress={() => router.push('/your-box' as Href)}
+              style={({ pressed }) => [styles.boxLine, pressed && styles.pressed]}
             >
-              <View style={styles.returnHairline} />
-              <Text style={styles.returnProvenance}>
-                {returnStorey
-                  ? `This Storey came from ${capturedByLabel}.`
-                  : 'Your Box will place something here when the archive has a little more to hold.'}
-              </Text>
-              <Text style={styles.returnTitle}>
-                {returnStorey?.title ?? 'Your first Storey will return here.'}
-              </Text>
-              <Text style={styles.returnQuote}>
-                "{returnStorey?.excerpt ?? 'The app is listening for what the Box brings home.'}"
-              </Text>
-              {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
+              <BoxStatusBadge box={box} />
             </Pressable>
+          )}
+
+          <View style={styles.shelfSection}>
+            <Text style={styles.eyebrow}>FOR TONIGHT</Text>
+            <View style={styles.shelfStage}>
+              {returnStorey ? <View style={styles.lamp} /> : null}
+              <Pressable
+                accessibilityLabel={
+                  returnStorey ? `Listen back: ${returnStorey.title}` : 'No Storey to revisit yet'
+                }
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !returnStorey }}
+                disabled={!returnStorey}
+                onPress={() =>
+                  returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
+                }
+                style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
+              >
+                <Text style={styles.returnProvenance}>
+                  {returnStorey
+                    ? `This Storey came from ${capturedByLabel}.`
+                    : 'Your Box will place something here when the archive has a little more to hold.'}
+                </Text>
+                <Text style={styles.returnTitle}>
+                  {returnStorey?.title ?? 'Your first Storey will return here.'}
+                </Text>
+                <Text style={styles.returnQuote}>
+                  "{returnStorey?.excerpt ?? 'The app is listening for what the Box brings home.'}"
+                </Text>
+                {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
+              </Pressable>
+            </View>
           </View>
 
           {isLoadingStoreys ? (
@@ -220,75 +223,6 @@ export default function HomeScreen() {
             </View>
           ) : null}
 
-          {storeys.length ? (
-            <View style={styles.analyticsBand}>
-              <View style={styles.analyticsHead}>
-                <Text style={styles.analyticsLabel}>FROM YOUR ARCHIVE</Text>
-              </View>
-              <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
-                {topTheme ? (
-                  <Pressable
-                    accessibilityLabel={`Top theme: ${topTheme.name}`}
-                    accessibilityRole="link"
-                    onPress={() => router.push(`/themes/${toSlug(topTheme.name)}` as Href)}
-                    style={styles.analyticsColumn}
-                  >
-                    <Text style={styles.analyticsKicker}>TOP THEME</Text>
-                    <Text style={styles.analyticsValue}>{topTheme.name}</Text>
-                    <Text style={styles.analyticsMeta}>
-                      {topTheme.count} {topTheme.count === 1 ? 'Storey' : 'Storeys'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                <View style={styles.analyticsColumn}>
-                  <Text style={styles.analyticsKicker}>LATEST TEXTURE</Text>
-                  <Text style={styles.analyticsValue}>{topTexture}</Text>
-                  <View style={styles.textureDots}>
-                    {recentTextures.map((texture) => (
-                      <View
-                        key={texture}
-                        style={[styles.analyticsDot, { backgroundColor: getTextureColor(texture) }]}
-                      />
-                    ))}
-                  </View>
-                </View>
-                {topPerson ? (
-                  <Pressable
-                    accessibilityLabel={`Who came up: ${topPerson.name}`}
-                    accessibilityRole="link"
-                    onPress={() => router.push(`/people/${toSlug(topPerson.name)}` as Href)}
-                    style={styles.analyticsColumn}
-                  >
-                    <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
-                    <Text style={styles.analyticsValue}>{topPerson.name}</Text>
-                    <Text style={styles.analyticsMeta}>
-                      {topPerson.count} {topPerson.count === 1 ? 'Storey' : 'Storeys'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              <View style={styles.deepLinks}>
-                <Pressable
-                  accessibilityLabel="See all themes"
-                  accessibilityRole="link"
-                  hitSlop={12}
-                  onPress={() => router.push('/archive?lens=themes' as Href)}
-                >
-                  <Text style={styles.deepLink}>See all themes</Text>
-                </Pressable>
-                <View style={styles.deepLinkDot} />
-                <Pressable
-                  accessibilityLabel="See all people"
-                  accessibilityRole="link"
-                  hitSlop={12}
-                  onPress={() => router.push('/archive?lens=people' as Href)}
-                >
-                  <Text style={styles.deepLink}>See all people</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-
           <Text style={styles.footer}>Your story stays yours.</Text>
         </ScrollView>
       </DaybookChrome>
@@ -310,6 +244,14 @@ function getDayPart() {
   return 'evening';
 }
 
+function formatDaybookDate() {
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+  }).format(new Date());
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: colors.background,
@@ -326,20 +268,51 @@ const styles = StyleSheet.create({
     maxWidth: undefined,
     paddingBottom: 96,
   },
-  greetingWrap: {
-    paddingBottom: 18,
-    paddingTop: 30,
+  pageHead: {
+    paddingBottom: 4,
+    paddingTop: 34,
   },
   greeting: {
+    color: colors.ink,
+    fontFamily: fonts.serifLight,
+    fontSize: 34,
+    fontWeight: '300',
+    lineHeight: 41,
+  },
+  pageDate: {
     color: colors.muted,
-    fontFamily: fonts.serifLightItalic,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
-    fontWeight: '300',
-    lineHeight: 20,
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 8,
+  },
+  boxLine: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  shelfSection: {
+    marginTop: 34,
+  },
+  shelfStage: {
+    marginTop: 14,
+    position: 'relative',
+  },
+  lamp: {
+    backgroundColor: colors.glow,
+    borderRadius: 999,
+    bottom: -26,
+    left: -18,
+    opacity: 0.3,
+    position: 'absolute',
+    right: -18,
+    top: -26,
   },
   section: {
-    marginTop: 26,
+    marginTop: 36,
   },
   sectionHeader: {
     alignItems: 'center',
@@ -371,15 +344,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     position: 'relative',
   },
-  returnHairline: {
-    backgroundColor: colors.blueLine,
-    height: 2,
-    left: 52,
-    opacity: 0.85,
-    position: 'absolute',
-    right: 52,
-    top: 0,
-  },
   returnProvenance: {
     color: colors.muted,
     fontFamily: fonts.serifLightItalic,
@@ -392,9 +356,9 @@ const styles = StyleSheet.create({
   returnTitle: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 21,
+    fontSize: 24,
     fontWeight: '400',
-    lineHeight: 25.2,
+    lineHeight: 30,
     marginBottom: 10,
   },
   returnQuote: {
@@ -551,95 +515,6 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     lineHeight: 27.2,
     textAlign: 'center',
-  },
-  analyticsBand: {
-    backgroundColor: '#EAF1F7',
-    borderBottomColor: '#DDE8F0',
-    borderBottomWidth: 1,
-    borderTopColor: '#DDE8F0',
-    borderTopWidth: 1,
-    marginHorizontal: -28,
-    marginTop: 28,
-    paddingHorizontal: 28,
-    paddingVertical: 26,
-  },
-  analyticsHead: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  analyticsLabel: {
-    color: colors.blueDark,
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    fontWeight: '400',
-    letterSpacing: 2,
-    lineHeight: 14,
-  },
-  analyticsGrid: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  analyticsGridPhone: {
-    flexDirection: 'column',
-    gap: 18,
-  },
-  analyticsColumn: {
-    flex: 1,
-    minWidth: 0,
-  },
-  analyticsKicker: {
-    color: colors.blueDark,
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    fontWeight: '400',
-    letterSpacing: 1.2,
-    lineHeight: 14,
-    marginBottom: 10,
-  },
-  analyticsValue: {
-    color: '#22303C',
-    fontFamily: fonts.serif,
-    fontSize: 23,
-    fontWeight: '400',
-    lineHeight: 29,
-  },
-  analyticsMeta: {
-    color: colors.blueDark,
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 8,
-  },
-  textureDots: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 13,
-  },
-  analyticsDot: {
-    borderRadius: 5,
-    height: 10,
-    width: 10,
-  },
-  deepLinks: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 18,
-    justifyContent: 'center',
-    marginTop: 22,
-  },
-  deepLink: {
-    color: colors.blueDark,
-    fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  deepLinkDot: {
-    backgroundColor: '#B9C6D2',
-    borderRadius: 1.5,
-    height: 3,
-    width: 3,
   },
   footer: {
     color: colors.muted,

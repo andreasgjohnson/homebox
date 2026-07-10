@@ -28,7 +28,7 @@ import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { supabase } from '@/lib/supabase';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ArchiveScreen() {
@@ -83,6 +83,17 @@ export default function ArchiveScreen() {
   const timeItems = useMemo(() => getTimeAggregates(storeys), [storeys]);
   const periods = useMemo(() => getArchivePeriods(storeys), [storeys]);
   const firstName = getFirstName(profileName || session?.user.email);
+  const topTheme = themes[0];
+  const topPerson = people[0];
+  const topTexture = storeys[0]?.texture ?? 'Unprocessed';
+  const recentTextures = [
+    ...new Set(
+      storeys
+        .slice(0, 5)
+        .map((storey) => storey.texture)
+        .filter((texture): texture is string => Boolean(texture)),
+    ),
+  ].slice(0, 3);
 
   async function signOut() {
     setIsSigningOut(true);
@@ -159,6 +170,54 @@ export default function ArchiveScreen() {
 
           {!isLoading && !errorMessage && activeLens === 'people' ? (
             <PeopleLens isCompact={isPhone} people={people} router={router} />
+          ) : null}
+
+          {!isLoading && !errorMessage && storeys.length ? (
+            <View style={styles.pulseBand}>
+              <Text style={styles.pulseLabel}>FROM YOUR ARCHIVE</Text>
+              <View style={[styles.pulseGrid, isPhone && styles.pulseGridPhone]}>
+                {topTheme ? (
+                  <Pressable
+                    accessibilityLabel={`Top theme: ${topTheme.name}`}
+                    accessibilityRole="link"
+                    onPress={() => router.push(`/themes/${toSlug(topTheme.name)}` as Href)}
+                    style={styles.pulseColumn}
+                  >
+                    <Text style={styles.pulseKicker}>TOP THEME</Text>
+                    <Text style={styles.pulseValue}>{topTheme.name}</Text>
+                    <Text style={styles.pulseMeta}>
+                      {topTheme.count} {topTheme.count === 1 ? 'Storey' : 'Storeys'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <View style={styles.pulseColumn}>
+                  <Text style={styles.pulseKicker}>LATEST TEXTURE</Text>
+                  <Text style={styles.pulseValue}>{topTexture}</Text>
+                  <View style={styles.pulseDots}>
+                    {recentTextures.map((texture) => (
+                      <View
+                        key={texture}
+                        style={[styles.pulseDot, { backgroundColor: getTextureColor(texture) }]}
+                      />
+                    ))}
+                  </View>
+                </View>
+                {topPerson ? (
+                  <Pressable
+                    accessibilityLabel={`Who came up: ${topPerson.name}`}
+                    accessibilityRole="link"
+                    onPress={() => router.push(`/people/${toSlug(topPerson.name)}` as Href)}
+                    style={styles.pulseColumn}
+                  >
+                    <Text style={styles.pulseKicker}>WHO CAME UP</Text>
+                    <Text style={styles.pulseValue}>{topPerson.name}</Text>
+                    <Text style={styles.pulseMeta}>
+                      {topPerson.count} {topPerson.count === 1 ? 'Storey' : 'Storeys'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
           ) : null}
         </ScrollView>
       </View>
@@ -817,6 +876,69 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '400',
     marginTop: 3,
+  },
+  pulseBand: {
+    backgroundColor: colors.surfaceBlue,
+    borderColor: colors.blueLine,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginTop: 44,
+    paddingHorizontal: 26,
+    paddingVertical: 24,
+  },
+  pulseLabel: {
+    color: colors.blueDark,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: '400',
+    letterSpacing: 2,
+    lineHeight: 14,
+    marginBottom: 18,
+  },
+  pulseGrid: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  pulseGridPhone: {
+    flexDirection: 'column',
+    gap: 18,
+  },
+  pulseColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pulseKicker: {
+    color: colors.blueDark,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: '400',
+    letterSpacing: 1.2,
+    lineHeight: 14,
+    marginBottom: 8,
+  },
+  pulseValue: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 22,
+    fontWeight: '400',
+    lineHeight: 28,
+  },
+  pulseMeta: {
+    color: colors.blueDark,
+    fontFamily: fonts.sansMedium,
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 6,
+  },
+  pulseDots: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 11,
+  },
+  pulseDot: {
+    borderRadius: 5,
+    height: 10,
+    width: 10,
   },
   emptyLens: {
     borderColor: colors.border,
