@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { colors } from '@/lib/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
@@ -38,9 +39,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -1,6 +1,7 @@
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import { BoxIllustration, BoxStatusBadge } from '@/components/BoxHardware';
@@ -54,7 +55,12 @@ export default function YourBoxScreen() {
           <Text style={styles.boxName}>{box.name}</Text>
           {isLoading ? <ActivityIndicator color={colors.ink} /> : <BoxStatusBadge box={box} />}
           {!isLoading && !isPaired ? (
-            <Pressable onPress={() => router.push('/pair-box' as Href)} style={styles.pairButton}>
+            <Pressable
+              accessibilityLabel="Pair your Box"
+              accessibilityRole="button"
+              onPress={() => router.push('/pair-box' as Href)}
+              style={styles.pairButton}
+            >
               <Text style={styles.pairButtonText}>Pair your Box</Text>
             </Pressable>
           ) : null}
@@ -113,21 +119,6 @@ export default function YourBoxScreen() {
           ))}
         </View>
 
-        <View style={styles.panel}>
-          <Text style={styles.mutedLabel}>OPTIONAL NOTIFICATIONS</Text>
-          {[
-            { isOn: true, label: 'A Storey is ready to revisit' },
-            { isOn: true, label: 'A new Storey has arrived' },
-            { isOn: false, label: 'A prompt waiting at home' },
-          ].map(({ isOn, label }) => (
-            <View key={label} style={styles.notificationRow}>
-              <Text style={styles.notificationLabel}>{label}</Text>
-              <View style={[styles.toggleTrack, !isOn && styles.toggleTrackOff]}>
-                <View style={[styles.toggleKnob, !isOn && styles.toggleKnobOff]} />
-              </View>
-            </View>
-          ))}
-        </View>
       </ScrollView>
 
       <BottomTabBar activeTab="box" />
@@ -195,7 +186,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: 28,
     fontWeight: '400',
-    lineHeight: 31,
+    lineHeight: 35,
     marginBottom: 8,
   },
   pairButton: {
@@ -203,8 +194,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     borderRadius: 999,
     marginTop: 16,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingVertical: 11,
+    paddingVertical: 12,
   },
   pairButtonText: {
     color: colors.background,
@@ -243,7 +236,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   tableLabel: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -255,7 +248,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   tableValueBlue: {
-    color: colors.blue,
+    color: colors.blueDark,
   },
   privacyCard: {
     backgroundColor: '#EDF3F8',
@@ -267,12 +260,12 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   blueLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 1.8,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 11,
   },
   privacyText: {
@@ -291,12 +284,12 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   mutedLabel: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 1.8,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 14,
   },
   legendRow: {
@@ -318,51 +311,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   legendDescription: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '400',
-  },
-  notificationRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  notificationLabel: {
-    color: '#3A4350',
-    flex: 1,
-    fontFamily: fonts.serif,
-    fontSize: 14,
-    fontWeight: '400',
-    lineHeight: 19.6,
-  },
-  toggleTrack: {
-    backgroundColor: colors.blue,
-    borderRadius: 999,
-    height: 24,
-    position: 'relative',
-    width: 40,
-  },
-  toggleTrackOff: {
-    backgroundColor: '#DDE4EA',
-  },
-  toggleKnob: {
-    backgroundColor: colors.white,
-    borderRadius: 9,
-    elevation: 2,
-    height: 18,
-    left: 19,
-    position: 'absolute',
-    shadowColor: '#000',
-    shadowOffset: { height: 1, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    top: 3,
-    width: 18,
-  },
-  toggleKnobOff: {
-    left: 3,
   },
 });

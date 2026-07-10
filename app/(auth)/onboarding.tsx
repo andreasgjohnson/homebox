@@ -1,8 +1,10 @@
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoxIllustration } from '@/components/BoxHardware';
+import { Icon } from '@/components/Icon';
 import { colors, fonts } from '@/lib/theme';
 
 const locations = ['Bedside', 'Desk', 'Kitchen', 'Living room', 'Custom'];
@@ -32,8 +34,12 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.progress}>
+    <SafeAreaView style={styles.screen}>
+      <View
+        accessibilityLabel={`Step ${step + 1} of 4`}
+        accessibilityRole="progressbar"
+        style={styles.progress}
+      >
         {[0, 1, 2, 3].map((item) => (
           <View
             key={item}
@@ -76,6 +82,9 @@ export default function OnboardingScreen() {
 
                 return (
                   <Pressable
+                    accessibilityLabel={location}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                     key={location}
                     onPress={() => setSelectedLocation(location)}
                     style={[styles.locationChip, isSelected && styles.locationChipSelected]}
@@ -108,7 +117,7 @@ export default function OnboardingScreen() {
               <View style={styles.ritualRule} />
               <View style={styles.ritualRow}>
                 <View style={styles.checkBadge}>
-                  <Text style={styles.checkText}>✓</Text>
+                  <Icon color={colors.blueDark} fallbackGlyph="✓" name="checkmark" size={14} />
                 </View>
                 <Text style={styles.ritualNote}>Your voice stays yours.</Text>
               </View>
@@ -120,7 +129,7 @@ export default function OnboardingScreen() {
           <View style={styles.centerStep}>
             <View style={styles.softGlow} />
             <View style={styles.readyBadge}>
-              <Text style={styles.readyCheck}>✓</Text>
+              <Icon color={colors.blueDark} fallbackGlyph="✓" name="checkmark" size={22} weight="semibold" />
             </View>
             <Text style={styles.heroTitle}>Your Box is ready.</Text>
             <Text style={styles.body}>
@@ -131,14 +140,24 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable onPress={back} style={styles.secondaryButton}>
+        <Pressable
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+          onPress={back}
+          style={styles.secondaryButton}
+        >
           <Text style={styles.secondaryText}>Back</Text>
         </Pressable>
-        <Pressable onPress={next} style={styles.primaryButton}>
+        <Pressable
+          accessibilityLabel={isLastStep ? 'Finish setup' : 'Continue'}
+          accessibilityRole="button"
+          onPress={next}
+          style={styles.primaryButton}
+        >
           <Text style={styles.primaryText}>{isLastStep ? 'Finish setup' : 'Continue'}</Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -200,7 +219,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 2.42,
-    lineHeight: 11,
+    lineHeight: 15,
     marginBottom: 30,
   },
   heroTitle: {
@@ -274,7 +293,7 @@ const styles = StyleSheet.create({
     width: 7,
   },
   connectedText: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '500',
@@ -286,12 +305,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   locationChip: {
+    alignItems: 'center',
     backgroundColor: colors.surfaceWarm,
     borderColor: '#DDE4EA',
     borderRadius: 999,
     borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingVertical: 11,
   },
   locationChipSelected: {
     backgroundColor: colors.ink,
@@ -410,11 +432,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 28,
   },
-  checkText: {
-    color: colors.blue,
-    fontFamily: fonts.serif,
-    fontSize: 16,
-  },
   ritualNote: {
     color: colors.muted,
     flex: 1,
@@ -435,17 +452,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     width: 58,
   },
-  readyCheck: {
-    color: colors.blue,
-    fontFamily: fonts.sans,
-    fontSize: 22,
-    fontWeight: '600',
-  },
   footer: {
     alignSelf: 'center',
     gap: 10,
     maxWidth: 400,
-    paddingBottom: 52,
+    paddingBottom: 24,
     paddingHorizontal: 32,
     width: '100%',
   },
@@ -469,7 +480,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   secondaryText: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',

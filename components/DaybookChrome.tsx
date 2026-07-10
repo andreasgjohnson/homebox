@@ -11,7 +11,9 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Icon } from '@/components/Icon';
 import { colors, fonts, radii } from '@/lib/theme';
 
 type DaybookChromeProps = {
@@ -114,9 +116,16 @@ export function StoreyboxDrawer({
         <Pressable onPress={onClose} style={styles.scrim} />
         <View style={styles.drawer}>
           <View style={styles.drawerTop}>
-            <Text style={styles.drawerWordmark}>STOREYBOX</Text>
-            <Pressable onPress={onClose}>
-              <Text style={styles.close}>×</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.drawerWordmark}>
+              STOREYBOX
+            </Text>
+            <Pressable
+              accessibilityLabel="Close menu"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={onClose}
+            >
+              <Icon color={colors.muted} fallbackGlyph="×" name="xmark" size={18} />
             </Pressable>
           </View>
 
@@ -130,11 +139,22 @@ export function StoreyboxDrawer({
 
           <View style={styles.navList}>
             {navItems.map((item) => (
-              <Pressable key={item.label} onPress={() => onNavigate(item.href)} style={styles.navItem}>
+              <Pressable
+                accessibilityLabel={item.label}
+                accessibilityRole="link"
+                key={item.label}
+                onPress={() => onNavigate(item.href)}
+                style={styles.navItem}
+              >
                 <Text style={styles.navLabel}>{item.label}</Text>
               </Pressable>
             ))}
-            <Pressable onPress={() => onNavigate('/profile' as Href)} style={styles.navItem}>
+            <Pressable
+              accessibilityLabel="Settings"
+              accessibilityRole="link"
+              onPress={() => onNavigate('/profile' as Href)}
+              style={styles.navItem}
+            >
               <Text style={styles.navLabel}>Settings</Text>
             </Pressable>
           </View>
@@ -151,7 +171,15 @@ export function StoreyboxDrawer({
           <View style={styles.drawerFooter}>
             <Text style={styles.privacyLine}>Your story stays yours.</Text>
             {onSignOut ? (
-              <Pressable disabled={isSigningOut} onPress={onSignOut} style={styles.signOutButton}>
+              <Pressable
+                accessibilityLabel="Sign out"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isSigningOut }}
+                disabled={isSigningOut}
+                hitSlop={4}
+                onPress={onSignOut}
+                style={styles.signOutButton}
+              >
                 {isSigningOut ? (
                   <ActivityIndicator color={colors.ink} />
                 ) : (
@@ -177,7 +205,9 @@ export function StoreyboxWordmark() {
       onPress={() => router.replace('/' as Href)}
       style={styles.wordmarkButton}
     >
-      <Text style={styles.wordmark}>STOREYBOX</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.wordmark}>
+        STOREYBOX
+      </Text>
     </Pressable>
   );
 }
@@ -222,7 +252,13 @@ export function ProfileAvatar({
 
 export function MenuButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.menuButton}>
+    <Pressable
+      accessibilityLabel="Open menu"
+      accessibilityRole="button"
+      hitSlop={10}
+      onPress={onPress}
+      style={styles.menuButton}
+    >
       <View style={styles.menuLines}>
         <View style={styles.menuLine} />
         <View style={styles.menuLine} />
@@ -233,31 +269,52 @@ export function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+const tabs: Array<{
+  fallbackGlyph: string;
+  href: Href;
+  key: 'home' | 'archive' | 'box' | 'profile';
+  label: string;
+  symbol: 'house' | 'books.vertical' | 'shippingbox' | 'person.crop.circle';
+}> = [
+  { key: 'home', label: 'Home', symbol: 'house', fallbackGlyph: '⌂', href: '/' as Href },
+  { key: 'archive', label: 'Archive', symbol: 'books.vertical', fallbackGlyph: '▱', href: '/archive' as Href },
+  { key: 'box', label: 'Your Box', symbol: 'shippingbox', fallbackGlyph: '◉', href: '/your-box' as Href },
+  { key: 'profile', label: 'Profile', symbol: 'person.crop.circle', fallbackGlyph: '◌', href: '/profile' as Href },
+];
+
 export function BottomTabBar({
   activeTab,
 }: {
   activeTab: 'home' | 'archive' | 'box' | 'profile';
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.tabBar}>
-      <Pressable onPress={() => router.replace('/' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActive]}>⌂</Text>
-        <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActive]}>Home</Text>
-      </Pressable>
-      <Pressable onPress={() => router.replace('/archive' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'archive' && styles.tabActive]}>▱</Text>
-        <Text style={[styles.tabLabel, activeTab === 'archive' && styles.tabActive]}>Archive</Text>
-      </Pressable>
-      <Pressable onPress={() => router.replace('/your-box' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'box' && styles.tabActive]}>◉</Text>
-        <Text style={[styles.tabLabel, activeTab === 'box' && styles.tabActive]}>Your Box</Text>
-      </Pressable>
-      <Pressable onPress={() => router.push('/profile' as Href)} style={styles.tabSlot}>
-        <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabActive]}>◌</Text>
-        <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabActive]}>Profile</Text>
-      </Pressable>
+    <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.key;
+        const color = isActive ? colors.ink : colors.muted;
+
+        return (
+          <Pressable
+            accessibilityLabel={tab.label}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            key={tab.key}
+            onPress={() => (tab.key === 'profile' ? router.push(tab.href) : router.replace(tab.href))}
+            style={styles.tabSlot}
+          >
+            <Icon color={color} fallbackGlyph={tab.fallbackGlyph} name={tab.symbol} size={22} />
+            <Text
+              maxFontSizeMultiplier={1.2}
+              style={[styles.tabLabel, isActive && styles.tabActive]}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -296,7 +353,7 @@ const styles = StyleSheet.create({
     gap: 3.5,
   },
   menuLine: {
-    backgroundColor: '#5A6470',
+    backgroundColor: colors.muted,
     height: 1.5,
     width: 18,
   },
@@ -304,7 +361,7 @@ const styles = StyleSheet.create({
     width: 12,
   },
   menuText: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -378,13 +435,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 2.64,
   },
-  close: {
-    color: '#5A6470',
-    fontFamily: fonts.serif,
-    fontSize: 20,
-    fontWeight: '400',
-    lineHeight: 22,
-  },
   userRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -418,11 +468,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   userMeta: {
-    color: '#7D8893',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 12,
     fontWeight: '400',
-    lineHeight: 12,
+    lineHeight: 16,
     marginTop: 3,
   },
   navList: {
@@ -436,7 +486,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: 21,
     fontWeight: '400',
-    lineHeight: 21,
+    lineHeight: 27,
   },
   returning: {
     borderTopColor: '#DDD6C8',
@@ -445,12 +495,12 @@ const styles = StyleSheet.create({
     paddingTop: 22,
   },
   returningLabel: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.54,
-    lineHeight: 11,
+    lineHeight: 15,
     marginBottom: 14,
   },
   returningText: {
@@ -466,7 +516,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   privacyLine: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
@@ -494,9 +544,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     bottom: 0,
     flexDirection: 'row',
-    height: 64,
     justifyContent: 'space-around',
     left: 0,
+    minHeight: 64,
     paddingHorizontal: 16,
     position: 'absolute',
     right: 0,
@@ -505,21 +555,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     gap: 4,
+    minHeight: 48,
     paddingVertical: 8,
   },
-  tabIcon: {
-    color: '#A6A092',
-    fontFamily: fonts.sans,
-    fontSize: 23,
-    fontWeight: '600',
-    lineHeight: 24,
-  },
   tabLabel: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 10,
     fontWeight: '600',
-    lineHeight: 12,
+    lineHeight: 13,
   },
   tabActive: {
     color: colors.ink,

@@ -6,7 +6,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +13,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { Icon } from '@/components/Icon';
 import { createStoreyAudioSignedUrl, isUploadedStoreyAudioPath } from '@/lib/storeyAudio';
 import {
   deleteStorey,
@@ -26,19 +27,6 @@ import {
 } from '@/lib/storeys';
 import { colors, fonts, getTextureColor } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
-
-const waveBars = [
-  9, 20, 16, 28, 18, 23, 37, 17, 31, 24, 18, 27, 39, 22, 28, 19, 35, 16, 24, 30, 18, 40, 48, 22,
-  30, 33, 41, 27, 45, 38, 25, 43, 31, 37, 46, 29, 42, 35, 24, 39, 28, 34, 44, 21, 36, 26, 31, 38,
-  28, 22, 35, 27, 32, 41, 25, 30, 23, 34, 28, 20, 31, 24, 29, 18,
-];
-const pinIndexes = new Set([6, 22, 42, 56]);
-
-type MarkedMoment = {
-  quote: string;
-  seconds: number;
-  t: string;
-};
 
 export default function StoreyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -120,11 +108,15 @@ export default function StoreyDetailScreen() {
     };
   }, [storey?.audio_url]);
 
-  const markedMoments = useMemo(() => getMarkedMoments(storey), [storey]);
+  const memorableQuotes = useMemo(() => getMemorableQuotes(storey), [storey]);
   const provenance = useMemo(() => (storey ? getStoreyProvenance(storey) : null), [storey]);
   const wordCount = useMemo(() => getWordCount(storey?.transcript), [storey?.transcript]);
   const summary = personalizeSummary(storey?.summary);
-  const duration = playerStatus.duration || 100;
+  const durationSeconds = playerStatus.duration > 0 ? playerStatus.duration : null;
+  const progress =
+    durationSeconds && playerStatus.currentTime > 0
+      ? Math.min(playerStatus.currentTime / durationSeconds, 1)
+      : 0;
   const canPlay = Boolean(playbackUri);
 
   async function togglePlayback() {
@@ -137,15 +129,6 @@ export default function StoreyDetailScreen() {
       return;
     }
 
-    player.play();
-  }
-
-  async function playFrom(seconds: number) {
-    if (!canPlay) {
-      return;
-    }
-
-    await player.seekTo(seconds);
     player.play();
   }
 
@@ -201,18 +184,31 @@ export default function StoreyDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
-        <Pressable onPress={() => router.replace('/archive' as Href)} style={styles.backLink}>
-          <Text style={styles.backChevron}>‹</Text>
+        <Pressable
+          accessibilityLabel="Back to Archive"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={() => router.replace('/archive' as Href)}
+          style={styles.backLink}
+        >
+          <Icon color={colors.muted} fallbackGlyph="‹" name="chevron.left" size={15} />
           <Text style={styles.backText}>Archive</Text>
         </Pressable>
         <StoreyboxWordmark />
         <View style={styles.privateWrap}>
           <Text style={styles.privateLabel}>PRIVATE</Text>
-          <Pressable disabled={isDeleting} onPress={() => void confirmDeleteStorey()}>
+          <Pressable
+            accessibilityLabel="Delete this Storey"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isDeleting }}
+            disabled={isDeleting}
+            hitSlop={12}
+            onPress={() => void confirmDeleteStorey()}
+          >
             {isDeleting ? (
-              <ActivityIndicator color={colors.faint} />
+              <ActivityIndicator color={colors.muted} />
             ) : (
-              <Text style={styles.overflow}>⋮</Text>
+              <Icon color={colors.muted} fallbackGlyph="⋮" name="trash" size={17} />
             )}
           </Pressable>
         </View>
@@ -240,7 +236,8 @@ export default function StoreyDetailScreen() {
             <View style={styles.header}>
               <Text style={styles.provenanceLabel}>{provenance?.badge}</Text>
               <Text style={styles.dateLine}>
-                {formatDetailDate(storey.recorded_at)} · {formatAudioTime(duration)}
+                {formatDetailDate(storey.recorded_at)}
+                {durationSeconds ? ` · ${formatAudioTime(durationSeconds)}` : ''}
               </Text>
               {provenance?.capturedBy ? (
                 <Text style={styles.capturedBy}>{provenance.capturedBy}</Text>
@@ -248,16 +245,20 @@ export default function StoreyDetailScreen() {
               {isEditingTitle ? (
                 <View style={styles.titleEditor}>
                   <TextInput
+                    accessibilityLabel="Storey title"
                     autoCapitalize="sentences"
                     editable={!isSavingTitle}
                     onChangeText={setTitleDraft}
                     placeholder="Untitled Storey"
-                    placeholderTextColor={colors.faint}
+                    placeholderTextColor={colors.muted}
                     returnKeyType="done"
                     style={styles.titleInput}
                     value={titleDraft}
                   />
                   <Pressable
+                    accessibilityLabel="Save title"
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: isSavingTitle }}
                     disabled={isSavingTitle}
                     onPress={() => void saveTitle()}
                     style={styles.saveTitleButton}
@@ -276,32 +277,30 @@ export default function StoreyDetailScreen() {
 
             <View style={[styles.audioCard, isPhone && styles.audioCardPhone]}>
               <Pressable
+                accessibilityLabel={playerStatus.playing ? 'Pause' : 'Play'}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canPlay }}
                 disabled={!canPlay}
+                hitSlop={6}
                 onPress={() => void togglePlayback()}
                 style={[styles.playButton, !canPlay && styles.disabled]}
               >
-                <Text style={styles.playIcon}>{playerStatus.playing ? 'Ⅱ' : '▶'}</Text>
+                <Icon
+                  color="#CDD9E5"
+                  fallbackGlyph={playerStatus.playing ? 'Ⅱ' : '▶'}
+                  name={playerStatus.playing ? 'pause.fill' : 'play.fill'}
+                  size={17}
+                />
               </Pressable>
-              <View style={[styles.waveform, isPhone && styles.waveformPhone]}>
-                {waveBars.map((height, index) => {
-                  const isPin = pinIndexes.has(index);
-                  const pin = markedMoments[index % Math.max(markedMoments.length, 1)];
-
-                  return (
-                    <Pressable
-                      disabled={!isPin || !pin}
-                      key={`${height}-${index}`}
-                      onPress={() => pin && void playFrom(pin.seconds)}
-                      style={[
-                        styles.waveBar,
-                        {
-                          backgroundColor: isPin ? '#C0883F' : '#A8BCCD',
-                          height: isPin ? Math.max(height, 34) : height,
-                        },
-                      ]}
-                    />
-                  );
-                })}
+              <View style={styles.progressWrap}>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { flex: progress }]} />
+                  <View style={{ flex: 1 - progress }} />
+                </View>
+                <Text style={styles.progressTime}>
+                  {formatAudioTime(playerStatus.currentTime)}
+                  {durationSeconds ? ` / ${formatAudioTime(durationSeconds)}` : ''}
+                </Text>
               </View>
             </View>
 
@@ -312,26 +311,24 @@ export default function StoreyDetailScreen() {
             <Text style={styles.sectionLabel}>WHAT THIS HELD</Text>
             <Text style={styles.summary}>{summary || 'No summary yet.'}</Text>
 
-            <Text style={styles.sectionLabel}>
-              MOMENTS WORTH KEEPING <Text style={styles.sectionHint}>· tap to play</Text>
-            </Text>
-            <View style={styles.markedList}>
-              {markedMoments.map((moment) => (
-                <Pressable
-                  key={`${moment.t}-${moment.quote}`}
-                  onPress={() => void playFrom(moment.seconds)}
-                  style={styles.markedRow}
-                >
-                  <View style={styles.timePill}>
-                    <View style={styles.timeDot} />
-                    <Text style={styles.timeText}>{moment.t}</Text>
-                  </View>
-                  <Text style={styles.quote}>“{moment.quote}”</Text>
-                </Pressable>
-              ))}
-            </View>
+            {memorableQuotes.length ? (
+              <>
+                <Text style={styles.sectionLabel}>MOMENTS WORTH KEEPING</Text>
+                <View style={styles.markedList}>
+                  {memorableQuotes.map((quote) => (
+                    <View key={quote} style={styles.markedRow}>
+                      <View style={styles.quoteDot} />
+                      <Text style={styles.quote}>“{quote}”</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
 
             <Pressable
+              accessibilityLabel="Full transcript"
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isTranscriptOpen }}
               onPress={() => setIsTranscriptOpen((current) => !current)}
               style={styles.transcriptToggle}
             >
@@ -339,46 +336,51 @@ export default function StoreyDetailScreen() {
                 <Text style={styles.transcriptLabel}>FULL TRANSCRIPT</Text>
                 <Text style={styles.transcriptMeta}>What you said — {wordCount} words</Text>
               </View>
-              <Text style={styles.chevron}>{isTranscriptOpen ? '⌃' : '⌄'}</Text>
+              <Icon
+                color={colors.muted}
+                fallbackGlyph={isTranscriptOpen ? '⌃' : '⌄'}
+                name={isTranscriptOpen ? 'chevron.up' : 'chevron.down'}
+                size={16}
+              />
             </Pressable>
 
             {isTranscriptOpen ? (
               <Text style={styles.transcript}>{storey.transcript || 'No transcript yet.'}</Text>
             ) : null}
 
-            <Text style={styles.sectionLabel}>THEMES</Text>
-            <View style={styles.chipRow}>
-              {(storey.tags?.length ? storey.tags : ['draft']).map((tag) => (
-                <View key={tag} style={styles.chip}>
-                  <Text style={styles.chipText}>{tag}</Text>
+            {storey.tags?.length || storey.emotional_tone ? (
+              <>
+                <Text style={styles.sectionLabel}>THEMES</Text>
+                <View style={styles.chipRow}>
+                  {(storey.tags ?? []).map((tag) => (
+                    <View key={tag} style={styles.chip}>
+                      <Text style={styles.chipText}>{tag}</Text>
+                    </View>
+                  ))}
+                  {storey.emotional_tone ? (
+                    <View style={styles.textureChip}>
+                      <View
+                        style={[
+                          styles.textureDot,
+                          { backgroundColor: getTextureColor(storey.emotional_tone) },
+                        ]}
+                      />
+                      <Text style={styles.chipText}>{storey.emotional_tone}</Text>
+                    </View>
+                  ) : null}
                 </View>
-              ))}
-              {storey.emotional_tone ? (
-                <View style={styles.textureChip}>
-                  <View
-                    style={[
-                      styles.textureDot,
-                      { backgroundColor: getTextureColor(storey.emotional_tone) },
-                    ]}
-                  />
-                  <Text style={styles.chipText}>{storey.emotional_tone}</Text>
-                </View>
-              ) : null}
-            </View>
+              </>
+            ) : null}
 
             <View style={styles.actionRow}>
-              <Pressable onPress={() => setIsEditingTitle(true)} style={styles.actionPill}>
+              <Pressable
+                accessibilityLabel="Edit title"
+                accessibilityRole="button"
+                onPress={() => setIsEditingTitle(true)}
+                style={styles.actionPill}
+              >
                 <Text style={styles.actionText}>Edit title</Text>
               </Pressable>
-              <View style={styles.actionPill}>
-                <Text style={styles.actionText}>Edit themes</Text>
-              </View>
-              <View style={styles.actionPill}>
-                <Text style={styles.actionText}>Add a person</Text>
-              </View>
-              <View style={styles.actionPill}>
-                <Text style={styles.actionText}>Download</Text>
-              </View>
             </View>
             <Text style={styles.footer}>Sharing off · your story stays yours.</Text>
           </>
@@ -388,17 +390,12 @@ export default function StoreyDetailScreen() {
   );
 }
 
-function getMarkedMoments(storey: Storey | null): MarkedMoment[] {
+function getMemorableQuotes(storey: Storey | null): string[] {
   const quotes = storey?.memorable_quotes?.length
     ? storey.memorable_quotes
     : splitSummary(storey?.summary).slice(0, 4);
-  const times = [9, 41, 68, 87];
 
-  return (quotes.length ? quotes : ['This Storey is still being processed.']).slice(0, 4).map((quote, index) => ({
-    quote: quote.replace(/^["“]|["”]$/g, ''),
-    seconds: times[index] ?? 9,
-    t: formatAudioTime(times[index] ?? 9),
-  }));
+  return quotes.slice(0, 4).map((quote) => quote.replace(/^["“]|["”]$/g, ''));
 }
 
 function splitSummary(summary: string | null | undefined) {
@@ -483,16 +480,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
+    minHeight: 44,
     minWidth: 110,
   },
-  backChevron: {
-    color: '#5A6470',
-    fontFamily: fonts.serif,
-    fontSize: 18,
-    lineHeight: 14,
-  },
   backText: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -512,16 +504,11 @@ const styles = StyleSheet.create({
     minWidth: 110,
   },
   privateLabel: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-  },
-  overflow: {
-    color: colors.faint,
-    fontSize: 21,
-    lineHeight: 20,
   },
   container: {
     alignSelf: 'center',
@@ -540,31 +527,31 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   provenanceLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2.2,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 8,
     textAlign: 'center',
   },
   dateLine: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
-    lineHeight: 12,
+    lineHeight: 16,
     marginBottom: 6,
     textAlign: 'center',
   },
   capturedBy: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '400',
-    lineHeight: 12,
+    lineHeight: 16,
     marginBottom: 18,
     textAlign: 'center',
   },
@@ -597,9 +584,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.ink,
     borderRadius: 999,
+    justifyContent: 'center',
+    minHeight: 44,
     minWidth: 72,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 11,
   },
   saveTitleText: {
     color: colors.white,
@@ -632,26 +621,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 46,
   },
-  playIcon: {
-    color: '#CDD9E5',
-    fontSize: 16,
-    lineHeight: 18,
-  },
-  waveform: {
-    alignItems: 'flex-end',
+  progressWrap: {
     flex: 1,
+    gap: 8,
+  },
+  progressTrack: {
+    backgroundColor: '#E3ECF4',
+    borderRadius: 2,
     flexDirection: 'row',
-    gap: 2,
-    height: 44,
+    height: 4,
+    overflow: 'hidden',
   },
-  waveformPhone: {
-    height: 40,
+  progressFill: {
+    backgroundColor: colors.blueDark,
+    borderRadius: 2,
   },
-  waveBar: {
-    borderRadius: 3,
-    flex: 1,
-    maxWidth: 3,
-    minWidth: 2.5,
+  progressTime: {
+    color: colors.muted,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    fontWeight: '400',
+    lineHeight: 15,
   },
   playbackErrorText: {
     color: colors.danger,
@@ -661,17 +651,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.98,
-    lineHeight: 11,
+    lineHeight: 15,
     marginBottom: 12,
     marginTop: 26,
-  },
-  sectionHint: {
-    color: '#BCB6A6',
   },
   summary: {
     color: '#33302A',
@@ -685,33 +672,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   markedRow: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 13,
   },
-  timePill: {
-    alignItems: 'center',
-    backgroundColor: '#F6ECE0',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-  },
-  timeDot: {
-    backgroundColor: '#C0883F',
-    borderRadius: 2.5,
-    height: 5,
-    width: 5,
-  },
-  timeText: {
-    color: '#B07A3A',
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    fontWeight: '700',
+  quoteDot: {
+    backgroundColor: colors.gold,
+    borderRadius: 3,
+    height: 6,
+    marginTop: 9,
+    width: 6,
   },
   quote: {
-    color: '#5A6470',
+    color: colors.muted,
     flex: 1,
     fontFamily: fonts.serif,
     fontSize: 17,
@@ -731,7 +704,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   transcriptLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
@@ -739,15 +712,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   transcriptMeta: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 15,
     fontWeight: '400',
-  },
-  chevron: {
-    color: colors.faint,
-    fontSize: 24,
-    lineHeight: 24,
   },
   transcript: {
     color: '#33302A',
@@ -785,7 +753,7 @@ const styles = StyleSheet.create({
     width: 8,
   },
   chipText: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -798,11 +766,14 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   actionPill: {
+    alignItems: 'center',
     borderColor: '#D3CCBE',
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
   },
   actionText: {
     color: '#4A525D',
@@ -811,7 +782,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   footer: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 12,
     fontWeight: '400',

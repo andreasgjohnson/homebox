@@ -5,16 +5,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoxIllustration } from '@/components/BoxHardware';
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { Icon } from '@/components/Icon';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
 
@@ -71,8 +72,14 @@ export default function PairBoxScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.topBar}>
-          <Pressable onPress={() => router.replace('/your-box' as Href)} style={styles.backLink}>
-            <Text style={styles.backChevron}>‹</Text>
+          <Pressable
+            accessibilityLabel="Back to Your Box"
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => router.replace('/your-box' as Href)}
+            style={styles.backLink}
+          >
+            <Icon color={colors.muted} fallbackGlyph="‹" name="chevron.left" size={15} />
             <Text style={styles.backText}>Your Box</Text>
           </Pressable>
           <StoreyboxWordmark />
@@ -94,6 +101,7 @@ export default function PairBoxScreen() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>PAIRING CODE</Text>
             <TextInput
+              accessibilityLabel="Pairing code"
               autoFocus
               editable={!isSubmitting}
               keyboardType="number-pad"
@@ -109,6 +117,7 @@ export default function PairBoxScreen() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>NAME YOUR BOX</Text>
             <TextInput
+              accessibilityLabel="Name your Box"
               autoCapitalize="words"
               editable={!isSubmitting}
               onChangeText={setBoxName}
@@ -128,6 +137,9 @@ export default function PairBoxScreen() {
 
                 return (
                   <Pressable
+                    accessibilityLabel={item}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: isSubmitting, selected: isSelected }}
                     disabled={isSubmitting}
                     key={item}
                     onPress={() => setLocation(item)}
@@ -149,6 +161,9 @@ export default function PairBoxScreen() {
           ) : null}
 
           <Pressable
+            accessibilityLabel="Pair this Box"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
             disabled={!canSubmit}
             onPress={() => void claimBox()}
             style={({ pressed }) => [
@@ -213,22 +228,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
+    minHeight: 44,
     minWidth: 86,
   },
-  backChevron: {
-    color: '#5A6470',
-    fontFamily: fonts.serif,
-    fontSize: 20,
-    lineHeight: 16,
-  },
   backText: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
   },
   privateLabel: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.2,
@@ -283,12 +293,12 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   fieldLabel: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 1.8,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 12,
   },
   codeInput: {
@@ -316,12 +326,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locationChip: {
+    alignItems: 'center',
     backgroundColor: colors.surfaceWarm,
     borderColor: '#DDE4EA',
     borderRadius: 999,
     borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingVertical: 11,
   },
   locationChipSelected: {
     backgroundColor: colors.ink,
@@ -368,7 +381,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helper: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '400',

@@ -3,13 +3,13 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoxPresenceCard } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
@@ -83,7 +83,15 @@ export default function HomeScreen() {
   const returnStorey = recentStoreys[0];
   const topTheme = themes[0];
   const topPerson = people[0];
-  const topTexture = storeys[0]?.texture ?? 'Reflective';
+  const topTexture = storeys[0]?.texture ?? 'Unprocessed';
+  const recentTextures = [
+    ...new Set(
+      storeys
+        .slice(0, 5)
+        .map((storey) => storey.texture)
+        .filter((texture): texture is string => Boolean(texture)),
+    ),
+  ].slice(0, 3);
   const observation = getDashboardInsight(themes).replace('\n', ' ');
   const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
@@ -114,6 +122,11 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={styles.eyebrow}>FOR TONIGHT</Text>
             <Pressable
+              accessibilityLabel={
+                returnStorey ? `Listen back: ${returnStorey.title}` : 'No Storey to revisit yet'
+              }
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !returnStorey }}
               disabled={!returnStorey}
               onPress={() =>
                 returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
@@ -152,7 +165,12 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.eyebrow}>RECENT STOREYS</Text>
-              <Pressable onPress={() => router.push('/archive' as Href)}>
+              <Pressable
+                accessibilityLabel="See all Storeys"
+                accessibilityRole="link"
+                hitSlop={12}
+                onPress={() => router.push('/archive' as Href)}
+              >
                 <Text style={styles.allLink}>All →</Text>
               </Pressable>
             </View>
@@ -161,6 +179,8 @@ export default function HomeScreen() {
               <View style={styles.storeyList}>
                 {recentStoreys.map((storey) => (
                   <Pressable
+                    accessibilityLabel={`Open Storey: ${storey.title}`}
+                    accessibilityRole="button"
                     key={storey.id}
                     onPress={() => router.push(`/archive/${storey.id}` as Href)}
                     style={({ pressed }) => [styles.storeyRow, pressed && styles.pressed]}
@@ -180,9 +200,6 @@ export default function HomeScreen() {
                       </Text>
                       <Text style={styles.provenance}>{storey.provenanceLabel}</Text>
                     </View>
-                    <View style={styles.storeySide}>
-                      <Text style={styles.duration}>2:14</Text>
-                    </View>
                   </Pressable>
                 ))}
               </View>
@@ -197,61 +214,80 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <View style={styles.observationBand}>
-            <Text style={styles.observation}>{observation}</Text>
-          </View>
+          {storeys.length ? (
+            <View style={styles.observationBand}>
+              <Text style={styles.observation}>{observation}</Text>
+            </View>
+          ) : null}
 
-          <View style={styles.analyticsBand}>
-            <View style={styles.analyticsHead}>
-              <Text style={styles.analyticsLabel}>RECENT INSIGHTS</Text>
-              <Text style={styles.analyticsRange}>Last 7 days</Text>
-            </View>
-            <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
-              <Pressable
-                onPress={() => router.push(`/themes/${toSlug(topTheme?.name ?? 'Home')}` as Href)}
-                style={styles.analyticsColumn}
-              >
-                <Text style={styles.analyticsKicker}>TOP THEME</Text>
-                <Text style={styles.analyticsValue}>{topTheme?.name ?? 'Home'}</Text>
-                <Text style={styles.analyticsMeta}>{topTheme?.count ?? 0} Storeys · +2 this week</Text>
-                <View style={styles.freqBars}>
-                  <View style={[styles.freqBar, { backgroundColor: colors.blue, flex: 9 }]} />
-                  <View style={[styles.freqBar, { backgroundColor: '#A9C0D4', flex: 7 }]} />
-                  <View style={[styles.freqBar, { backgroundColor: '#CDDDEA', flex: 5 }]} />
-                </View>
-              </Pressable>
-              <View style={styles.analyticsColumn}>
-                <Text style={styles.analyticsKicker}>TEXTURE</Text>
-                <Text style={styles.analyticsValue}>{topTexture}</Text>
-                <Text style={styles.analyticsMeta}>Calmer than last week</Text>
-                <View style={styles.textureDots}>
-                  {[topTexture, 'Hopeful', 'Tender'].map((texture) => (
-                    <View
-                      key={texture}
-                      style={[styles.analyticsDot, { backgroundColor: getTextureColor(texture) }]}
-                    />
-                  ))}
-                </View>
+          {storeys.length ? (
+            <View style={styles.analyticsBand}>
+              <View style={styles.analyticsHead}>
+                <Text style={styles.analyticsLabel}>FROM YOUR ARCHIVE</Text>
               </View>
-              <Pressable
-                onPress={() => router.push(`/people/${toSlug(topPerson?.name ?? 'Dad')}` as Href)}
-                style={styles.analyticsColumn}
-              >
-                <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
-                <Text style={styles.analyticsValue}>{topPerson?.name ?? 'Dad'}</Text>
-                <Text style={styles.analyticsMeta}>{topPerson?.count ?? 0}× this week</Text>
-              </Pressable>
+              <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
+                {topTheme ? (
+                  <Pressable
+                    accessibilityLabel={`Top theme: ${topTheme.name}`}
+                    accessibilityRole="link"
+                    onPress={() => router.push(`/themes/${toSlug(topTheme.name)}` as Href)}
+                    style={styles.analyticsColumn}
+                  >
+                    <Text style={styles.analyticsKicker}>TOP THEME</Text>
+                    <Text style={styles.analyticsValue}>{topTheme.name}</Text>
+                    <Text style={styles.analyticsMeta}>
+                      {topTheme.count} {topTheme.count === 1 ? 'Storey' : 'Storeys'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <View style={styles.analyticsColumn}>
+                  <Text style={styles.analyticsKicker}>LATEST TEXTURE</Text>
+                  <Text style={styles.analyticsValue}>{topTexture}</Text>
+                  <View style={styles.textureDots}>
+                    {recentTextures.map((texture) => (
+                      <View
+                        key={texture}
+                        style={[styles.analyticsDot, { backgroundColor: getTextureColor(texture) }]}
+                      />
+                    ))}
+                  </View>
+                </View>
+                {topPerson ? (
+                  <Pressable
+                    accessibilityLabel={`Who came up: ${topPerson.name}`}
+                    accessibilityRole="link"
+                    onPress={() => router.push(`/people/${toSlug(topPerson.name)}` as Href)}
+                    style={styles.analyticsColumn}
+                  >
+                    <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
+                    <Text style={styles.analyticsValue}>{topPerson.name}</Text>
+                    <Text style={styles.analyticsMeta}>
+                      {topPerson.count} {topPerson.count === 1 ? 'Storey' : 'Storeys'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.deepLinks}>
+                <Pressable
+                  accessibilityLabel="See all themes"
+                  accessibilityRole="link"
+                  hitSlop={12}
+                  onPress={() => router.push('/archive?lens=themes' as Href)}
+                >
+                  <Text style={styles.deepLink}>See all themes</Text>
+                </Pressable>
+                <View style={styles.deepLinkDot} />
+                <Pressable
+                  accessibilityLabel="See all people"
+                  accessibilityRole="link"
+                  hitSlop={12}
+                  onPress={() => router.push('/archive?lens=people' as Href)}
+                >
+                  <Text style={styles.deepLink}>See all people</Text>
+                </Pressable>
+              </View>
             </View>
-            <View style={styles.deepLinks}>
-              <Pressable onPress={() => router.push('/archive?lens=themes' as Href)}>
-                <Text style={styles.deepLink}>See all themes</Text>
-              </Pressable>
-              <View style={styles.deepLinkDot} />
-              <Pressable onPress={() => router.push('/archive?lens=people' as Href)}>
-                <Text style={styles.deepLink}>See all people</Text>
-              </Pressable>
-            </View>
-          </View>
+          ) : null}
 
           <Text style={styles.footer}>Your story stays yours.</Text>
         </ScrollView>
@@ -295,12 +331,12 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   greeting: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.serif,
     fontSize: 15,
     fontStyle: 'italic',
     fontWeight: '300',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   section: {
     marginTop: 26,
@@ -312,7 +348,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   eyebrow: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
@@ -320,7 +356,7 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
   allLink: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '500',
@@ -345,7 +381,7 @@ const styles = StyleSheet.create({
     top: 0,
   },
   returnProvenance: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.serif,
     fontSize: 13,
     fontStyle: 'italic',
@@ -371,7 +407,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   listenBack: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -433,12 +469,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   stamp: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
-    lineHeight: 10,
+    lineHeight: 13,
   },
   metaDot: {
     backgroundColor: '#CDD9E5',
@@ -447,11 +483,11 @@ const styles = StyleSheet.create({
     width: 3,
   },
   textureLabel: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 10,
     fontWeight: '500',
-    lineHeight: 10,
+    lineHeight: 13,
   },
   storeyTitle: {
     color: colors.ink,
@@ -462,7 +498,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   storeyExcerpt: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.serif,
     fontSize: 13,
     fontStyle: 'italic',
@@ -470,25 +506,13 @@ const styles = StyleSheet.create({
     lineHeight: 18.2,
   },
   provenance: {
-    color: '#B0A894',
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    fontWeight: '400',
-    letterSpacing: 0.54,
-    lineHeight: 9,
-    marginTop: 7,
-  },
-  storeySide: {
-    alignItems: 'flex-end',
-    flexShrink: 0,
-  },
-  duration: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
-    lineHeight: 10,
-    marginBottom: 5,
+    letterSpacing: 0.54,
+    lineHeight: 13,
+    marginTop: 7,
   },
   emptyState: {
     borderColor: '#E8EEF3',
@@ -546,18 +570,12 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   analyticsLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2,
-    lineHeight: 10,
-  },
-  analyticsRange: {
-    color: '#7E94A8',
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    fontWeight: '500',
+    lineHeight: 14,
   },
   analyticsGrid: {
     flexDirection: 'row',
@@ -572,12 +590,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   analyticsKicker: {
-    color: '#7E94A8',
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 1.2,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 10,
   },
   analyticsValue: {
@@ -585,23 +603,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: 23,
     fontWeight: '400',
-    lineHeight: 23,
+    lineHeight: 29,
   },
   analyticsMeta: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 8,
-  },
-  freqBars: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-  },
-  freqBar: {
-    borderRadius: 3,
-    height: 4,
   },
   textureDots: {
     flexDirection: 'row',
@@ -621,7 +630,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   deepLink: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
@@ -633,12 +642,12 @@ const styles = StyleSheet.create({
     width: 3,
   },
   footer: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 14,
+    lineHeight: 15,
     marginTop: 34,
     textAlign: 'center',
   },

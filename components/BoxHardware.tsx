@@ -265,12 +265,12 @@ const styles = StyleSheet.create({
     color: '#C0883F',
   },
   presenceSub: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 11,
+    lineHeight: 15,
     textAlign: 'center',
   },
   presenceSubRecording: {
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   presenceNote: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.serif,
     fontSize: 14,
     fontStyle: 'italic',

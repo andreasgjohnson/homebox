@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
@@ -21,7 +21,9 @@ export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState(session?.user.email || 'Your archive');
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const initial = (displayName || session?.user.email || 'A').slice(0, 1).toUpperCase();
+  const archivingSince = formatArchivingSince(session?.user.created_at);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,10 +34,15 @@ export default function ProfileScreen() {
       }
 
       setIsLoading(true);
-      const { data } = await getProfile(session.user.id);
+      setErrorMessage(null);
+      const { data, error } = await getProfile(session.user.id);
 
       if (!isMounted) {
         return;
+      }
+
+      if (error) {
+        setErrorMessage(error.message);
       }
 
       setDisplayName(getProfileDisplayName(data) || session.user.email || 'Your archive');
@@ -70,7 +77,7 @@ export default function ProfileScreen() {
           </View>
           <View>
             <Text style={styles.name}>{displayName}</Text>
-            <Text style={styles.meta}>Archiving since March 2026</Text>
+            {archivingSince ? <Text style={styles.meta}>Archiving since {archivingSince}</Text> : null}
           </View>
         </View>
 
@@ -81,30 +88,31 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
+        {errorMessage ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+
         <Section title="ACCOUNT">
           <SettingRow label="Name" value={displayName} />
           <SettingRow label="Email" value={session?.user.email ?? 'Private link'} />
-          <SettingRow label="Archive since" value="March 2026" />
+          {archivingSince ? <SettingRow label="Archive since" value={archivingSince} /> : null}
         </Section>
 
         <Section title="PRIVACY & OWNERSHIP">
-          <SettingRow label="Private by default" value="On" valueColor={colors.blue} />
-          <SettingRow label="Export your archive" value="Request" />
-          <SettingRow label="Data ownership" value="Yours" valueColor={colors.blue} />
+          <SettingRow label="Private by default" value="On" valueColor={colors.blueDark} />
+          <SettingRow label="Data ownership" value="Yours" valueColor={colors.blueDark} />
         </Section>
 
-        <Section title="NOTIFICATIONS">
-          <SettingRow label="Storey ready" value="On" valueColor={colors.blue} />
-          <SettingRow label="Storey worth revisiting" value="Weekly" />
-          <SettingRow label="All others" value="Off" />
-        </Section>
-
-        <Section muted title="TRUSTED CONTACTS — COMING LATER">
-          <SettingRow label="Legacy settings" value="FUTURE" />
-          <SettingRow label="Trusted contact" value="FUTURE" />
-        </Section>
-
-        <Pressable disabled={isSigningOut} onPress={() => void signOut()} style={styles.signOut}>
+        <Pressable
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSigningOut }}
+          disabled={isSigningOut}
+          onPress={() => void signOut()}
+          style={styles.signOut}
+        >
           {isSigningOut ? (
             <ActivityIndicator color={colors.ink} />
           ) : (
@@ -120,17 +128,23 @@ export default function ProfileScreen() {
   );
 }
 
-function Section({
-  children,
-  muted = false,
-  title,
-}: {
-  children: ReactNode;
-  muted?: boolean;
-  title: string;
-}) {
+function formatArchivingSince(createdAt: string | undefined) {
+  if (!createdAt) {
+    return null;
+  }
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date);
+}
+
+function Section({ children, title }: { children: ReactNode; title: string }) {
   return (
-    <View style={[styles.section, muted && styles.sectionMuted]}>
+    <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.table}>{children}</View>
     </View>
@@ -140,7 +154,7 @@ function Section({
 function SettingRow({
   label,
   value,
-  valueColor = '#8A939E',
+  valueColor = colors.muted,
 }: {
   label: string;
   value: string;
@@ -208,11 +222,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: 22,
     fontWeight: '400',
-    lineHeight: 24,
+    lineHeight: 28,
     marginBottom: 4,
   },
   meta: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '400',
@@ -220,16 +234,13 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
-  sectionMuted: {
-    opacity: 0.58,
-  },
   sectionTitle: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 1.8,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 10,
   },
   table: {
@@ -248,7 +259,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   rowLabel: {
-    color: '#3A4350',
+    color: colors.charcoal,
     flex: 1,
     fontFamily: fonts.sans,
     fontSize: 14,
@@ -267,9 +278,11 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
+    justifyContent: 'center',
     marginBottom: 28,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    minHeight: 44,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   signOutText: {
     color: colors.ink,
@@ -278,14 +291,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footer: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 14,
+    lineHeight: 15,
     marginBottom: 8,
     textAlign: 'center',
+  },
+  notice: {
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.dangerBorder,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 20,
+    padding: 16,
+  },
+  noticeText: {
+    color: colors.danger,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 20,
   },
   feedback: {
     alignItems: 'center',

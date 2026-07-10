@@ -6,7 +6,7 @@ export const colors = {
   rail: '#EAEFF2',
   ink: '#1E2630',
   charcoal: '#2C3540',
-  muted: '#6C7682',
+  muted: '#5A6470',
   faint: '#9AA1AB',
   border: '#ECE4D5',
   borderStrong: '#E4DDCF',

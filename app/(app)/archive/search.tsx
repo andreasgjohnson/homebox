@@ -3,15 +3,16 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { Icon } from '@/components/Icon';
 import { buildArchiveMoments, getThemeAggregates, toSlug } from '@/lib/archiveView';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { colors, fonts } from '@/lib/theme';
@@ -22,6 +23,7 @@ export default function ArchiveSearchScreen() {
   const { session } = useAuth();
   const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   const loadStoreys = useCallback(async () => {
@@ -30,8 +32,15 @@ export default function ArchiveSearchScreen() {
     }
 
     setIsLoading(true);
-    const { data } = await listStoreys(session.user.id);
-    setStoreysFromCloud(data ?? []);
+    setErrorMessage(null);
+    const { data, error } = await listStoreys(session.user.id);
+
+    if (error) {
+      setErrorMessage(error.message);
+    } else {
+      setStoreysFromCloud(data ?? []);
+    }
+
     setIsLoading(false);
   }, [session?.user.id]);
 
@@ -43,7 +52,6 @@ export default function ArchiveSearchScreen() {
 
   const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
-  const recentSearches = ['What Mum always says', 'The drive', 'patience'];
   const filteredStoreys = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase();
 
@@ -64,8 +72,14 @@ export default function ArchiveSearchScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.replace('/archive' as Href)} style={styles.backLink}>
-          <Text style={styles.backChevron}>‹</Text>
+        <Pressable
+          accessibilityLabel="Back to Archive"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={() => router.replace('/archive' as Href)}
+          style={styles.backLink}
+        >
+          <Icon color={colors.muted} fallbackGlyph="‹" name="chevron.left" size={15} />
           <Text style={styles.backText}>Archive</Text>
         </Pressable>
         <StoreyboxWordmark />
@@ -75,10 +89,11 @@ export default function ArchiveSearchScreen() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.searchLine}>
           <TextInput
+            accessibilityLabel="Search your archive"
             autoCapitalize="none"
             onChangeText={setQuery}
             placeholder="Find something you left behind"
-            placeholderTextColor="#9AA1AB"
+            placeholderTextColor={colors.muted}
             returnKeyType="search"
             style={styles.searchInput}
             value={query}
@@ -92,11 +107,19 @@ export default function ArchiveSearchScreen() {
           </View>
         ) : null}
 
+        {errorMessage ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+
         {filteredStoreys.length ? (
           <View style={styles.block}>
             <Text style={styles.label}>FOUND IN YOUR ARCHIVE</Text>
             {filteredStoreys.map((storey) => (
               <Pressable
+                accessibilityLabel={`Open Storey: ${storey.title}`}
+                accessibilityRole="button"
                 key={storey.id}
                 onPress={() => router.push(`/archive/${storey.id}` as Href)}
                 style={styles.resultRow}
@@ -113,32 +136,35 @@ export default function ArchiveSearchScreen() {
           </View>
         ) : null}
 
-        {!query.trim() ? (
+        {!isLoading && !errorMessage && query.trim() && !filteredStoreys.length ? (
           <View style={styles.block}>
-            <Text style={styles.label}>RECENT SEARCHES</Text>
-            {recentSearches.map((search) => (
-              <Pressable key={search} onPress={() => setQuery(search)} style={styles.recentRow}>
-                <Text style={styles.recentText}>{search}</Text>
-              </Pressable>
-            ))}
+            <Text style={styles.label}>NOTHING FOUND</Text>
+            <Text style={styles.emptyText}>
+              Nothing in your archive matches "{query.trim()}". Try a person, a place, or a word
+              you remember saying.
+            </Text>
           </View>
         ) : null}
 
-        <View style={styles.block}>
-          <Text style={styles.label}>THEMES IN YOUR ARCHIVE</Text>
-          <View style={styles.themeChips}>
-            {(themes.length ? themes : [{ color: '#6B8198', count: 0, name: 'Home' }]).map((theme) => (
-              <Pressable
-                key={theme.name}
-                onPress={() => router.push(`/themes/${toSlug(theme.name)}` as Href)}
-                style={styles.themeChip}
-              >
-                <View style={[styles.dot, { backgroundColor: theme.color }]} />
-                <Text style={styles.themeText}>{theme.name}</Text>
-              </Pressable>
-            ))}
+        {themes.length ? (
+          <View style={styles.block}>
+            <Text style={styles.label}>THEMES IN YOUR ARCHIVE</Text>
+            <View style={styles.themeChips}>
+              {themes.map((theme) => (
+                <Pressable
+                  accessibilityLabel={`Theme: ${theme.name}`}
+                  accessibilityRole="link"
+                  key={theme.name}
+                  onPress={() => router.push(`/themes/${toSlug(theme.name)}` as Href)}
+                  style={styles.themeChip}
+                >
+                  <View style={[styles.dot, { backgroundColor: theme.color }]} />
+                  <Text style={styles.themeText}>{theme.name}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -163,22 +189,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
+    minHeight: 44,
     minWidth: 86,
   },
-  backChevron: {
-    color: '#5A6470',
-    fontFamily: fonts.serif,
-    fontSize: 20,
-    lineHeight: 16,
-  },
   backText: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '500',
   },
   privateLabel: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.2,
@@ -208,25 +229,20 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
   label: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 14,
   },
-  recentRow: {
-    borderBottomColor: '#F0E8DA',
-    borderBottomWidth: 1,
-    paddingVertical: 11,
-  },
-  recentText: {
-    color: '#5A6470',
+  emptyText: {
+    color: colors.muted,
     fontFamily: fonts.serif,
-    fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 18,
+    fontSize: 16,
+    fontStyle: 'italic',
+    lineHeight: 24,
   },
   themeChips: {
     flexDirection: 'row',
@@ -241,8 +257,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 7,
+    minHeight: 44,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 11,
   },
   dot: {
     borderRadius: 3,
@@ -290,5 +307,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     marginTop: 10,
+  },
+  notice: {
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.dangerBorder,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 24,
+    padding: 16,
+  },
+  noticeText: {
+    color: colors.danger,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
