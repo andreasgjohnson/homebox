@@ -17,6 +17,7 @@ import {
   buildArchiveMoments,
   getDashboardInsight,
   getFirstName,
+  getShelfPick,
   getThemeAggregates,
 } from '@/lib/archiveView';
 import { defaultBox, fetchPrimaryStoreyBox, type StoreyBox } from '@/lib/box';
@@ -76,8 +77,11 @@ export default function HomeScreen() {
   const firstName = getFirstName(profileName || session?.user.email);
   const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
-  const recentStoreys = storeys.slice(0, 3);
-  const returnStorey = recentStoreys[0];
+  const shelfPick = useMemo(() => getShelfPick(storeys), [storeys]);
+  const returnStorey = shelfPick?.storey;
+  const recentStoreys = storeys
+    .filter((storey) => storey.id !== returnStorey?.id)
+    .slice(0, 3);
   const observation = getDashboardInsight(themes).replace('\n', ' ');
   const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
@@ -121,7 +125,7 @@ export default function HomeScreen() {
           )}
 
           <View style={styles.shelfSection}>
-            <Text style={styles.eyebrow}>FOR TONIGHT</Text>
+            <Text style={styles.eyebrow}>{shelfPick?.label ?? 'SET OUT FOR YOU'}</Text>
             <View style={styles.shelfStage}>
               {returnStorey ? <View style={styles.lamp} /> : null}
               <Pressable

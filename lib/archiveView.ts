@@ -35,6 +35,11 @@ export type ArchivePeriod = {
   themes: string;
 };
 
+export type ShelfPick = {
+  label: string;
+  storey: ArchiveMoment;
+};
+
 const ignoredThemeTags = new Set(['draft', 'recorded', 'uploaded', 'uploading', 'processing']);
 const defaultTheme = 'Home';
 const defaultTexture = 'Reflective';
@@ -163,6 +168,120 @@ export function getArchivePeriods(moments: ArchiveMoment[]) {
       themes: themes || defaultTheme,
     };
   });
+}
+
+const dayMs = 24 * 60 * 60 * 1000;
+const numberWords: Record<number, string> = {
+  2: 'TWO',
+  3: 'THREE',
+  4: 'FOUR',
+  5: 'FIVE',
+  6: 'SIX',
+  7: 'SEVEN',
+  8: 'EIGHT',
+};
+
+/**
+ * The daybook shelf: a deterministic daily rediscovery pick. Same archive +
+ * same calendar day = same Storey, so the shelf reads as something set out
+ * for today rather than a feed. Ladder: anniversary match → any Storey at
+ * least 14 days old → the oldest Storey that isn't the newest → the only
+ * Storey, honestly labeled.
+ */
+export function getShelfPick(moments: ArchiveMoment[], now = new Date()): ShelfPick | null {
+  if (!moments.length) {
+    return null;
+  }
+
+  if (moments.length === 1) {
+    return { label: 'YOUR FIRST STOREY', storey: moments[0] };
+  }
+
+  const seed = hashString(formatSeedDate(now));
+  const byNewest = [...moments].sort(
+    (a, b) => b.recordedDate.getTime() - a.recordedDate.getTime(),
+  );
+  const newestId = byNewest[0].id;
+
+  const anniversaries = moments.filter((moment) => getAnniversaryYears(moment.recordedDate, now) >= 1);
+
+  if (anniversaries.length) {
+    const pick = anniversaries[seed % anniversaries.length];
+    const years = getAnniversaryYears(pick.recordedDate, now);
+
+    return {
+      label:
+        years === 1 ? 'A YEAR AGO THIS WEEK' : `${numberWords[years] ?? years} YEARS AGO THIS WEEK`,
+      storey: pick,
+    };
+  }
+
+  const rested = moments.filter(
+    (moment) => now.getTime() - moment.recordedDate.getTime() >= 14 * dayMs,
+  );
+
+  if (rested.length) {
+    const pick = rested[seed % rested.length];
+
+    return { label: formatShelfAge(pick.recordedDate, now), storey: pick };
+  }
+
+  const oldest = [...byNewest].reverse().find((moment) => moment.id !== newestId);
+
+  return oldest ? { label: 'FROM YOUR FIRST WEEK', storey: oldest } : null;
+}
+
+function getAnniversaryYears(recorded: Date, now: Date) {
+  const years = now.getFullYear() - recorded.getFullYear();
+
+  if (years < 1) {
+    return 0;
+  }
+
+  const anniversary = new Date(recorded);
+  anniversary.setFullYear(recorded.getFullYear() + years);
+
+  return Math.abs(anniversary.getTime() - now.getTime()) <= 3 * dayMs ? years : 0;
+}
+
+function formatShelfAge(recorded: Date, now: Date) {
+  const days = Math.floor((now.getTime() - recorded.getTime()) / dayMs);
+
+  if (days < 60) {
+    const weeks = Math.max(2, Math.round(days / 7));
+
+    return `FROM ${numberWords[weeks] ?? weeks} WEEKS AGO`;
+  }
+
+  const month = new Intl.DateTimeFormat(undefined, { month: 'long' })
+    .format(recorded)
+    .toUpperCase();
+  const yearDiff = now.getFullYear() - recorded.getFullYear();
+
+  if (yearDiff === 0) {
+    return `FROM ${month}`;
+  }
+
+  if (yearDiff === 1 && days < 366) {
+    return `FROM LAST ${month}`;
+  }
+
+  return `FROM ${month} ${recorded.getFullYear()}`;
+}
+
+function formatSeedDate(date: Date) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+function hashString(value: string) {
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return Math.abs(hash);
 }
 
 export function getDashboardInsight(themes: ArchiveAggregate[]) {
