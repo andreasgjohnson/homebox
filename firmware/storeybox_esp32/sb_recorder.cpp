@@ -29,6 +29,7 @@ volatile size_t droppedBytes = 0;
 File wavFile;
 SbRecordingMeta activeMeta;
 SbRecordingMeta finishedMeta;
+uint32_t recordStartMillis = 0;
 bool fileOpen = false;
 bool finishedReady = false;
 size_t dataBytesWritten = 0;
@@ -216,6 +217,11 @@ bool finalizeActiveRecording() {
 
   activeMeta.endedEpoch = time(nullptr);
   activeMeta.endedAt = sbIdentityIsoNow(activeMeta.endedEpoch);
+  if (activeMeta.startedEpoch < SB_MIN_VALID_EPOCH && activeMeta.endedEpoch >= SB_MIN_VALID_EPOCH) {
+    // The clock synced mid-recording; the recorded start still predates it.
+    activeMeta.startedEpoch = activeMeta.endedEpoch - activeMeta.durationMs / 1000;
+    activeMeta.startedAt = sbIdentityIsoNow(activeMeta.startedEpoch);
+  }
   activeMeta.interrupted = stopInterrupted;
   activeMeta.consecutiveFailures = 0;
   activeMeta.retryNotBefore = 0;
@@ -245,8 +251,9 @@ bool shouldAutoStop() {
   if (!fileOpen) {
     return false;
   }
-  time_t now = time(nullptr);
-  if (activeMeta.startedEpoch > 0 && now > activeMeta.startedEpoch + SB_MAX_RECORD_SECONDS) {
+  // Wall-clock time can jump decades forward when NTP syncs mid-recording,
+  // so the max-duration check must use the monotonic millis() clock.
+  if (millis() - recordStartMillis > SB_MAX_RECORD_SECONDS * 1000UL) {
     return true;
   }
   if (sbRecorderFreeBytes() < SB_STORAGE_LOW_WATER_BYTES) {
@@ -349,6 +356,7 @@ bool sbRecorderStart(const String &clientRecordingId, const String &startedAt, t
   ringTail = 0;
   droppedBytes = 0;
   dataBytesWritten = 0;
+  recordStartMillis = millis();
   stopRequested = false;
   stopInterrupted = false;
   finishedReady = false;
@@ -577,6 +585,17 @@ bool sbRecorderWriteMeta(const SbRecordingMeta &meta) {
   bool ok = serializeJson(doc, file) > 0;
   file.close();
   return ok;
+}
+
+bool sbRecorderRestampStale(SbRecordingMeta &meta, time_t now) {
+  if (meta.startedEpoch >= SB_MIN_VALID_EPOCH || now < SB_MIN_VALID_EPOCH) {
+    return false;
+  }
+  meta.endedEpoch = now;
+  meta.startedEpoch = now - meta.durationMs / 1000;
+  meta.startedAt = sbIdentityIsoNow(meta.startedEpoch);
+  meta.endedAt = sbIdentityIsoNow(meta.endedEpoch);
+  return sbRecorderWriteMeta(meta);
 }
 
 bool sbRecorderUpdateRetry(const SbRecordingMeta &meta, uint32_t failures, time_t retryNotBefore) {
