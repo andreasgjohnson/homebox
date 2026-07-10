@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#5A6470',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 58,
     fontWeight: '300',
     lineHeight: 61,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   trendRange: {
     color: '#7E94A8',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#DBE6EF',
     borderTopWidth: 1,
     color: '#3A4A58',
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 17,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -435,13 +435,13 @@ const styles = StyleSheet.create({
   },
   cardStamp: {
     color: colors.blue,
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 11,
     fontWeight: '700',
   },
   cardTexture: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   },
   cardExcerpt: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
     lineHeight: 21.75,

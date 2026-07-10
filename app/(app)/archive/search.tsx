@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#5A6470',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 18,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   resultExcerpt: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 18,

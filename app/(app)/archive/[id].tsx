@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#5A6470',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   },
   dateLine: {
     color: colors.blue,
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 32,
     fontWeight: '300',
     lineHeight: 37.12,
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     color: colors.ink,
     flex: 1,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 26,
     fontWeight: '300',
     paddingVertical: 8,
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   },
   saveTitleText: {
     color: colors.white,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -706,14 +706,14 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: '#B07A3A',
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 11,
     fontWeight: '700',
   },
   quote: {
     color: '#5A6470',
     flex: 1,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 17,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#4A525D',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },

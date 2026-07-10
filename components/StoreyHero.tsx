@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: colors.blue,
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 3.3,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 34,
     fontWeight: '300',
     lineHeight: 40.8,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: '#8A939E',
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     color: '#9AA1AB',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 10,
     fontWeight: '500',
     letterSpacing: 0.6,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.28,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   message: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 19,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   onboardingText: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
