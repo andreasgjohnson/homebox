@@ -85,12 +85,13 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
           <View style={styles.emailBlock}>
             <Text style={styles.emailLabel}>EMAIL</Text>
             <TextInput
+              accessibilityLabel="Email"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
               onChangeText={setEmail}
               placeholder="you@example.com"
-              placeholderTextColor={colors.faint}
+              placeholderTextColor={colors.muted}
               returnKeyType="send"
               style={styles.emailInput}
               value={email}
@@ -99,6 +100,9 @@ export function AuthForm({ mode = 'signup' }: AuthFormProps) {
           </View>
 
           <Pressable
+            accessibilityLabel="Send me a private link"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !email.trim() || isSubmitting }}
             disabled={!email.trim() || isSubmitting}
             onPress={() => void sendMagicLink()}
             style={({ pressed }) => [
@@ -193,12 +197,12 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
   monoFoot: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.98,
-    lineHeight: 11,
+    lineHeight: 15,
   },
   entryScroll: {
     alignItems: 'center',
@@ -216,12 +220,12 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   eyebrow: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 2.86,
-    lineHeight: 11,
+    lineHeight: 15,
     marginBottom: 16,
   },
   title: {
@@ -246,12 +250,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emailLabel: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.98,
-    lineHeight: 11,
+    lineHeight: 15,
     marginBottom: 12,
   },
   emailInput: {
@@ -288,7 +292,7 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   magicHint: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '400',
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   message: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',

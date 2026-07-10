@@ -69,18 +69,22 @@ export function StoreyHero() {
           <Text style={styles.cardLabel}>ACCESS YOUR ARCHIVE</Text>
           <Text style={styles.inputLabel}>Email</Text>
           <TextInput
+            accessibilityLabel="Email"
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="your@email.com"
-            placeholderTextColor="#9AA1AB"
+            placeholderTextColor={colors.muted}
             returnKeyType="send"
             style={styles.input}
             value={email}
             onSubmitEditing={() => void sendLink()}
           />
           <Pressable
+            accessibilityLabel="Send a link"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isSubmitting }}
             disabled={isSubmitting}
             onPress={() => void sendLink()}
             style={({ pressed }) => [styles.button, (pressed || isSubmitting) && styles.pressed]}
@@ -95,7 +99,13 @@ export function StoreyHero() {
           {displayMessage ? <Text style={styles.message}>{displayMessage}</Text> : null}
         </View>
 
-        <Pressable onPress={() => router.push('/onboarding' as Href)} style={styles.onboardingLink}>
+        <Pressable
+          accessibilityLabel="Pair a Box instead"
+          accessibilityRole="link"
+          hitSlop={10}
+          onPress={() => router.push('/onboarding' as Href)}
+          style={styles.onboardingLink}
+        >
           <Text style={styles.onboardingText}>Pair a Box instead</Text>
         </Pressable>
 
@@ -158,7 +168,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
@@ -177,17 +187,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   cardLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2.2,
-    lineHeight: 10,
+    lineHeight: 14,
     marginBottom: 22,
     textAlign: 'center',
   },
   inputLabel: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sansMedium,
     fontSize: 10,
     fontWeight: '500',
@@ -224,7 +234,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.28,
   },
   helper: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '400',
@@ -232,7 +242,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   message: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
@@ -244,13 +254,13 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   onboardingText: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
   footer: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',

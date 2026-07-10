@@ -1,32 +1,32 @@
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BoxPresenceCard } from '@/components/BoxHardware';
+import { BoxPresenceCard, BoxStatusBadge } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { Icon } from '@/components/Icon';
 import {
   buildArchiveMoments,
   getDashboardInsight,
   getFirstName,
-  getPersonAggregates,
+  getShelfPick,
   getThemeAggregates,
-  toSlug,
 } from '@/lib/archiveView';
 import { defaultBox, fetchPrimaryStoreyBox, type StoreyBox } from '@/lib/box';
 import { getProfilePhotoPreviewUrl } from '@/lib/profilePhotos';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
 import { supabase } from '@/lib/supabase';
-import { colors, fonts, getTextureColor } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function HomeScreen() {
@@ -42,12 +42,16 @@ export default function HomeScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
+
   const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
-    setIsLoadingStoreys(true);
+    // First load shows the skeleton; later focuses refresh silently behind
+    // the data already on screen so the daybook never flickers.
+    setIsLoadingStoreys(!hasLoadedRef.current);
     setErrorMessage(null);
 
     const [{ data, error }, { data: profile }, { box: userBox }] = await Promise.all([
@@ -57,9 +61,11 @@ export default function HomeScreen() {
     ]);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Home archive load failed:', error.message);
+      setErrorMessage("The archive couldn't be reached. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
+      hasLoadedRef.current = true;
     }
 
     setBox(userBox);
@@ -76,15 +82,15 @@ export default function HomeScreen() {
   );
 
   const firstName = getFirstName(profileName || session?.user.email);
+  const greetingName = profileName ? getFirstName(profileName) : null;
   const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
-  const people = useMemo(() => getPersonAggregates(storeys), [storeys]);
-  const recentStoreys = storeys.slice(0, 3);
-  const returnStorey = recentStoreys[0];
-  const topTheme = themes[0];
-  const topPerson = people[0];
-  const topTexture = storeys[0]?.texture ?? 'Reflective';
-  const observation = getDashboardInsight(themes).replace('\n', ' ');
+  const shelfPick = useMemo(() => getShelfPick(storeys), [storeys]);
+  const returnStorey = shelfPick?.storey;
+  const recentStoreys = storeys
+    .filter((storey) => storey.id !== returnStorey?.id)
+    .slice(0, 3);
+  const observation = useMemo(() => getDashboardInsight(storeys), [storeys]);
   const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
   async function signOut() {
@@ -105,55 +111,101 @@ export default function HomeScreen() {
         userName={profileName || session?.user.email}
       >
         <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
-          <View style={styles.greetingWrap}>
-            <Text style={styles.greeting}>Good {getDayPart()}, {firstName}.</Text>
+          <View style={styles.pageHead}>
+            <Text style={styles.greeting}>
+              Good {getDayPart()}
+              {greetingName ? `, ${greetingName}` : ''}.
+            </Text>
+            <Text style={styles.pageDate}>{formatDaybookDate()}</Text>
           </View>
 
-          <BoxPresenceCard box={box} />
-
-          <View style={styles.section}>
-            <Text style={styles.eyebrow}>FOR TONIGHT</Text>
+          {box.state === 'recording' ? (
+            <BoxPresenceCard box={box} />
+          ) : (
             <Pressable
-              disabled={!returnStorey}
-              onPress={() =>
-                returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
-              }
-              style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
+              accessibilityLabel="Your Box — open status"
+              accessibilityRole="link"
+              hitSlop={8}
+              onPress={() => router.push('/your-box' as Href)}
+              style={({ pressed }) => [styles.boxLine, pressed && styles.pressed]}
             >
-              <View style={styles.returnHairline} />
-              <Text style={styles.returnProvenance}>
-                {returnStorey
-                  ? `This Storey came from ${capturedByLabel}.`
-                  : 'Your Box will place something here when the archive has a little more to hold.'}
-              </Text>
-              <Text style={styles.returnTitle}>
-                {returnStorey?.title ?? 'Your first Storey will return here.'}
-              </Text>
-              <Text style={styles.returnQuote}>
-                "{returnStorey?.excerpt ?? 'The app is listening for what the Box brings home.'}"
-              </Text>
-              {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
+              <BoxStatusBadge box={box} />
             </Pressable>
-          </View>
-
-          {isLoadingStoreys ? (
-            <View style={styles.feedback}>
-              <ActivityIndicator color={colors.ink} />
-              <Text style={styles.feedbackText}>Opening your archive...</Text>
-            </View>
-          ) : null}
+          )}
 
           {errorMessage ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>{errorMessage}</Text>
+            <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
+          ) : null}
+
+          {isLoadingStoreys ? (
+            <View style={styles.shelfSection}>
+              <View style={styles.skeletonEyebrow} />
+              <View style={styles.skeletonShelf}>
+                <View style={[styles.skeletonBar, { width: '46%' }]} />
+                <View style={[styles.skeletonBar, styles.skeletonBarTitle, { width: '82%' }]} />
+                <View style={[styles.skeletonBar, { width: '64%' }]} />
+              </View>
+              <View style={styles.skeletonRows}>
+                <View style={styles.skeletonRow} />
+                <View style={styles.skeletonRow} />
+                <View style={styles.skeletonRow} />
+              </View>
             </View>
           ) : null}
 
+          {!isLoadingStoreys ? (
+          <View style={styles.shelfSection}>
+            <Text style={styles.eyebrow}>{shelfPick?.label ?? 'SET OUT FOR YOU'}</Text>
+            <View style={styles.shelfStage}>
+              {returnStorey ? (
+                <>
+                  <View style={styles.lamp} />
+                  <Pressable
+                    accessibilityLabel={`Listen back: ${returnStorey.title}`}
+                    accessibilityRole="button"
+                    onPress={() => router.push(`/archive/${returnStorey.id}` as Href)}
+                    style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.returnProvenance}>
+                      This Storey came from {capturedByLabel}.
+                    </Text>
+                    <Text style={styles.returnTitle}>{returnStorey.title}</Text>
+                    {returnStorey.excerpt ? (
+                      <Text style={styles.returnQuote}>"{returnStorey.excerpt}"</Text>
+                    ) : (
+                      <Text style={styles.returnPreparing}>Still being prepared.</Text>
+                    )}
+                    <Text style={styles.listenBack}>Listen back</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View style={styles.returnShelf}>
+                  <Text style={styles.returnProvenance}>
+                    Your Box will place something here when the archive has a little more to hold.
+                  </Text>
+                  <Text style={styles.returnTitle}>Your first Storey will return here.</Text>
+                  <Text style={styles.returnPreparing}>
+                    The app is listening for what the Box brings home.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+          ) : null}
+
+          {!isLoadingStoreys ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.eyebrow}>RECENT STOREYS</Text>
-              <Pressable onPress={() => router.push('/archive' as Href)}>
-                <Text style={styles.allLink}>All →</Text>
+              <Pressable
+                accessibilityLabel="See all Storeys"
+                accessibilityRole="link"
+                hitSlop={8}
+                onPress={() => router.push('/archive' as Href)}
+                style={styles.allLinkButton}
+              >
+                <Text style={styles.allLink}>All</Text>
+                <Icon color={colors.blueDark} fallbackGlyph="→" name="chevron.right" size={11} />
               </Pressable>
             </View>
 
@@ -161,6 +213,8 @@ export default function HomeScreen() {
               <View style={styles.storeyList}>
                 {recentStoreys.map((storey) => (
                   <Pressable
+                    accessibilityLabel={`Open Storey: ${storey.title}`}
+                    accessibilityRole="button"
                     key={storey.id}
                     onPress={() => router.push(`/archive/${storey.id}` as Href)}
                     style={({ pressed }) => [styles.storeyRow, pressed && styles.pressed]}
@@ -176,12 +230,9 @@ export default function HomeScreen() {
                         {storey.title}
                       </Text>
                       <Text numberOfLines={1} style={styles.storeyExcerpt}>
-                        "{storey.excerpt}"
+                        {storey.excerpt ? `"${storey.excerpt}"` : 'Still being prepared.'}
                       </Text>
                       <Text style={styles.provenance}>{storey.provenanceLabel}</Text>
-                    </View>
-                    <View style={styles.storeySide}>
-                      <Text style={styles.duration}>2:14</Text>
                     </View>
                   </Pressable>
                 ))}
@@ -196,62 +247,13 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
+          ) : null}
 
-          <View style={styles.observationBand}>
-            <Text style={styles.observation}>{observation}</Text>
-          </View>
-
-          <View style={styles.analyticsBand}>
-            <View style={styles.analyticsHead}>
-              <Text style={styles.analyticsLabel}>RECENT INSIGHTS</Text>
-              <Text style={styles.analyticsRange}>Last 7 days</Text>
+          {!isLoadingStoreys && observation ? (
+            <View style={styles.observationBand}>
+              <Text style={styles.observation}>{observation}</Text>
             </View>
-            <View style={[styles.analyticsGrid, isPhone && styles.analyticsGridPhone]}>
-              <Pressable
-                onPress={() => router.push(`/themes/${toSlug(topTheme?.name ?? 'Home')}` as Href)}
-                style={styles.analyticsColumn}
-              >
-                <Text style={styles.analyticsKicker}>TOP THEME</Text>
-                <Text style={styles.analyticsValue}>{topTheme?.name ?? 'Home'}</Text>
-                <Text style={styles.analyticsMeta}>{topTheme?.count ?? 0} Storeys · +2 this week</Text>
-                <View style={styles.freqBars}>
-                  <View style={[styles.freqBar, { backgroundColor: colors.blue, flex: 9 }]} />
-                  <View style={[styles.freqBar, { backgroundColor: '#A9C0D4', flex: 7 }]} />
-                  <View style={[styles.freqBar, { backgroundColor: '#CDDDEA', flex: 5 }]} />
-                </View>
-              </Pressable>
-              <View style={styles.analyticsColumn}>
-                <Text style={styles.analyticsKicker}>TEXTURE</Text>
-                <Text style={styles.analyticsValue}>{topTexture}</Text>
-                <Text style={styles.analyticsMeta}>Calmer than last week</Text>
-                <View style={styles.textureDots}>
-                  {[topTexture, 'Hopeful', 'Tender'].map((texture) => (
-                    <View
-                      key={texture}
-                      style={[styles.analyticsDot, { backgroundColor: getTextureColor(texture) }]}
-                    />
-                  ))}
-                </View>
-              </View>
-              <Pressable
-                onPress={() => router.push(`/people/${toSlug(topPerson?.name ?? 'Dad')}` as Href)}
-                style={styles.analyticsColumn}
-              >
-                <Text style={styles.analyticsKicker}>WHO CAME UP</Text>
-                <Text style={styles.analyticsValue}>{topPerson?.name ?? 'Dad'}</Text>
-                <Text style={styles.analyticsMeta}>{topPerson?.count ?? 0}× this week</Text>
-              </Pressable>
-            </View>
-            <View style={styles.deepLinks}>
-              <Pressable onPress={() => router.push('/archive?lens=themes' as Href)}>
-                <Text style={styles.deepLink}>See all themes</Text>
-              </Pressable>
-              <View style={styles.deepLinkDot} />
-              <Pressable onPress={() => router.push('/archive?lens=people' as Href)}>
-                <Text style={styles.deepLink}>See all people</Text>
-              </Pressable>
-            </View>
-          </View>
+          ) : null}
 
           <Text style={styles.footer}>Your story stays yours.</Text>
         </ScrollView>
@@ -274,6 +276,14 @@ function getDayPart() {
   return 'evening';
 }
 
+function formatDaybookDate() {
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'long',
+  }).format(new Date());
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: colors.background,
@@ -282,28 +292,59 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     maxWidth: 480,
-    paddingBottom: 88,
+    paddingBottom: 48,
     paddingHorizontal: 28,
     width: '100%',
   },
   containerPhone: {
     maxWidth: undefined,
-    paddingBottom: 96,
+    paddingBottom: 44,
   },
-  greetingWrap: {
-    paddingBottom: 18,
-    paddingTop: 30,
+  pageHead: {
+    paddingBottom: 4,
+    paddingTop: 34,
   },
   greeting: {
-    color: '#8A939E',
-    fontFamily: fonts.serifLightItalic,
+    color: colors.ink,
+    fontFamily: fonts.serifLight,
+    fontSize: 34,
+    fontWeight: '300',
+    lineHeight: 41,
+  },
+  pageDate: {
+    color: colors.muted,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
-    fontWeight: '300',
-    lineHeight: 18,
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 8,
+  },
+  boxLine: {
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  shelfSection: {
+    marginTop: 34,
+  },
+  shelfStage: {
+    marginTop: 14,
+    position: 'relative',
+  },
+  lamp: {
+    backgroundColor: colors.glow,
+    borderRadius: 999,
+    bottom: -26,
+    left: -18,
+    opacity: 0.3,
+    position: 'absolute',
+    right: -18,
+    top: -26,
   },
   section: {
-    marginTop: 26,
+    marginTop: 36,
   },
   sectionHeader: {
     alignItems: 'center',
@@ -312,15 +353,22 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   eyebrow: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 2.2,
     lineHeight: 13,
   },
+  allLinkButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+    minHeight: 44,
+  },
   allLink: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
@@ -335,17 +383,8 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     position: 'relative',
   },
-  returnHairline: {
-    backgroundColor: colors.blueLine,
-    height: 2,
-    left: 52,
-    opacity: 0.85,
-    position: 'absolute',
-    right: 52,
-    top: 0,
-  },
   returnProvenance: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.serifLightItalic,
     fontSize: 13,
     fontStyle: 'italic',
@@ -356,9 +395,9 @@ const styles = StyleSheet.create({
   returnTitle: {
     color: colors.ink,
     fontFamily: fonts.serif,
-    fontSize: 21,
+    fontSize: 24,
     fontWeight: '400',
-    lineHeight: 25.2,
+    lineHeight: 30,
     marginBottom: 10,
   },
   returnQuote: {
@@ -370,35 +409,55 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 16,
   },
+  returnPreparing: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 21,
+    marginBottom: 16,
+  },
   listenBack: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
-  feedback: {
-    alignItems: 'center',
-    marginTop: 28,
+  skeletonEyebrow: {
+    backgroundColor: colors.border,
+    borderRadius: 6,
+    height: 12,
+    marginBottom: 14,
+    width: 132,
   },
-  feedbackText: {
-    color: colors.muted,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    marginTop: 10,
+  skeletonShelf: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 24,
   },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
+  skeletonBar: {
+    backgroundColor: colors.border,
+    borderRadius: 6,
+    height: 12,
+    opacity: 0.75,
+  },
+  skeletonBarTitle: {
+    height: 18,
+  },
+  skeletonRows: {
+    gap: 10,
+    marginTop: 36,
+  },
+  skeletonRow: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    marginTop: 22,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
+    height: 76,
   },
   storeyList: {
     borderColor: colors.border,
@@ -433,12 +492,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   stamp: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.monoBold,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
-    lineHeight: 10,
+    lineHeight: 13,
   },
   metaDot: {
     backgroundColor: '#CDD9E5',
@@ -447,11 +506,11 @@ const styles = StyleSheet.create({
     width: 3,
   },
   textureLabel: {
-    color: '#9AA1AB',
+    color: colors.muted,
     fontFamily: fonts.sansMedium,
     fontSize: 10,
     fontWeight: '500',
-    lineHeight: 10,
+    lineHeight: 13,
   },
   storeyTitle: {
     color: colors.ink,
@@ -462,7 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   storeyExcerpt: {
-    color: '#8A939E',
+    color: colors.muted,
     fontFamily: fonts.serifItalic,
     fontSize: 13,
     fontStyle: 'italic',
@@ -470,25 +529,13 @@ const styles = StyleSheet.create({
     lineHeight: 18.2,
   },
   provenance: {
-    color: '#B0A894',
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    fontWeight: '400',
-    letterSpacing: 0.54,
-    lineHeight: 9,
-    marginTop: 7,
-  },
-  storeySide: {
-    alignItems: 'flex-end',
-    flexShrink: 0,
-  },
-  duration: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 10,
     fontWeight: '400',
-    lineHeight: 10,
-    marginBottom: 5,
+    letterSpacing: 0.54,
+    lineHeight: 13,
+    marginTop: 7,
   },
   emptyState: {
     borderColor: '#E8EEF3',
@@ -528,117 +575,13 @@ const styles = StyleSheet.create({
     lineHeight: 27.2,
     textAlign: 'center',
   },
-  analyticsBand: {
-    backgroundColor: '#EAF1F7',
-    borderBottomColor: '#DDE8F0',
-    borderBottomWidth: 1,
-    borderTopColor: '#DDE8F0',
-    borderTopWidth: 1,
-    marginHorizontal: -28,
-    marginTop: 28,
-    paddingHorizontal: 28,
-    paddingVertical: 26,
-  },
-  analyticsHead: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  analyticsLabel: {
-    color: colors.blue,
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    fontWeight: '400',
-    letterSpacing: 2,
-    lineHeight: 10,
-  },
-  analyticsRange: {
-    color: '#7E94A8',
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  analyticsGrid: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  analyticsGridPhone: {
-    flexDirection: 'column',
-    gap: 18,
-  },
-  analyticsColumn: {
-    flex: 1,
-    minWidth: 0,
-  },
-  analyticsKicker: {
-    color: '#7E94A8',
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    fontWeight: '400',
-    letterSpacing: 1.2,
-    lineHeight: 10,
-    marginBottom: 10,
-  },
-  analyticsValue: {
-    color: '#22303C',
-    fontFamily: fonts.serif,
-    fontSize: 23,
-    fontWeight: '400',
-    lineHeight: 23,
-  },
-  analyticsMeta: {
-    color: colors.blue,
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 8,
-  },
-  freqBars: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-  },
-  freqBar: {
-    borderRadius: 3,
-    height: 4,
-  },
-  textureDots: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 13,
-  },
-  analyticsDot: {
-    borderRadius: 5,
-    height: 10,
-    width: 10,
-  },
-  deepLinks: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 18,
-    justifyContent: 'center',
-    marginTop: 22,
-  },
-  deepLink: {
-    color: colors.blue,
-    fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  deepLinkDot: {
-    backgroundColor: '#B9C6D2',
-    borderRadius: 1.5,
-    height: 3,
-    width: 3,
-  },
   footer: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 14,
+    lineHeight: 15,
     marginTop: 34,
     textAlign: 'center',
   },

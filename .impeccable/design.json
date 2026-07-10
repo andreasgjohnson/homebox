@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-10T00:00:00Z",
+  "title": "Design System: Storeybox Home",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#1E2630",
+        "tonalRamp": ["#0B0F14", "#141A21", "#1E2630", "#33404E", "#4C5C6E", "#6E8093", "#9AAABB", "#CBD6E0"]
+      },
+      "ledger-blue": {
+        "role": "secondary",
+        "displayName": "Ledger Blue",
+        "canonical": "#5B7895",
+        "tonalRamp": ["#16202C", "#243849", "#375169", "#4A6784", "#5B7895", "#7E96AC", "#A6B9C9", "#D3DEE7"]
+      },
+      "heirloom-gold": {
+        "role": "tertiary",
+        "displayName": "Heirloom Gold",
+        "canonical": "#B88A4E",
+        "tonalRamp": ["#3D2B14", "#5C4220", "#7B592D", "#9A713B", "#B88A4E", "#CCA672", "#DFC29B", "#F0DFC7"]
+      },
+      "paper-cream": {
+        "role": "neutral",
+        "displayName": "Paper Cream",
+        "canonical": "#F6F2EA",
+        "tonalRamp": ["#2A2620", "#4E463B", "#736A5B", "#988D7C", "#BCB2A0", "#D9D2C4", "#EAE5DA", "#F6F2EA"]
+      },
+      "red-ink": {
+        "role": "danger",
+        "displayName": "Red Ink",
+        "canonical": "#8A3F36",
+        "tonalRamp": ["#2E120E", "#4A1F1A", "#652C25", "#8A3F36", "#A55B50", "#C08076", "#D8A9A0", "#EDD2CC"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Screen titles — the entry heading of the page. Newsreader light (300) only at large sizes." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles within a page." },
+      "body": { "displayName": "Body", "purpose": "Reading text in Hanken Grotesk; Ink or Charcoal on paper." },
+      "annotation": { "displayName": "Annotation", "purpose": "Serif italic — subtitles, promises, quoted lines from Storeys." },
+      "label": { "displayName": "Label (Marginalia)", "purpose": "Space Mono eyebrows, counts, provenance. Never a full sentence." }
+    },
+    "shadows": [
+      { "name": "page-lift", "value": "0 1px 3px rgba(0, 0, 0, 0.18)", "purpose": "Resting/pressed lift for cards and tappable entries. Barely there." },
+      { "name": "drawer-cast", "value": "24px 0 60px rgba(28, 34, 42, 0.26)", "purpose": "The system ceiling — drawer and full overlays only." }
+    ],
+    "motion": [
+      { "name": "press-dim", "value": "opacity 0.72", "purpose": "Pressed state for all ink controls; no hue shifts on touch." },
+      { "name": "disabled-dim", "value": "opacity 0.48", "purpose": "Disabled state for controls." },
+      { "name": "overlay-fade", "value": "fade (system duration)", "purpose": "Drawer/modal entrance; reversal on dismiss. Honor Reduce Motion with crossfade." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "700px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The typeset ink plate — solid Ink, Paper Cream text, for the screen's one main action.",
+      "html": "<button class=\"ds-btn-primary\">Send a link</button>",
+      "css": ".ds-btn-primary { background: #1E2630; color: #F6F2EA; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.28px; border: none; border-radius: 12px; min-height: 52px; padding: 14px 22px; width: 100%; cursor: pointer; transition: opacity 0.15s ease-out; } .ds-btn-primary:hover { opacity: 0.88; } .ds-btn-primary:active { opacity: 0.72; } .ds-btn-primary:focus-visible { outline: 2px solid #5B7895; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.48; }"
+    },
+    {
+      "name": "Pill Button",
+      "kind": "button",
+      "refersTo": "button-pill",
+      "description": "Quiet bordered pill for secondary actions — sign out, filters.",
+      "html": "<button class=\"ds-btn-pill\">Sign out</button>",
+      "css": ".ds-btn-pill { background: transparent; color: #1E2630; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; border: 1px solid #E4DDCF; border-radius: 999px; padding: 9px 16px; cursor: pointer; transition: opacity 0.15s ease-out, border-color 0.15s ease-out; } .ds-btn-pill:hover { border-color: #9AA1AB; } .ds-btn-pill:active { opacity: 0.72; } .ds-btn-pill:focus-visible { outline: 2px solid #5B7895; outline-offset: 2px; }"
+    },
+    {
+      "name": "Underline Input",
+      "kind": "input",
+      "refersTo": "input-underline",
+      "description": "Fields are typeset marks: a mono label above a bottom-ruled line, no box.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\">EMAIL</label><input class=\"ds-input-underline\" type=\"email\" placeholder=\"your@email.com\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; width: 100%; } .ds-field-label { font-family: 'Space Mono', ui-monospace, monospace; font-size: 11px; font-weight: 400; letter-spacing: 1.98px; color: #8A939E; margin-bottom: 12px; } .ds-input-underline { background: transparent; border: none; border-bottom: 1.5px solid #CFE0EE; color: #1E2630; font-family: 'Newsreader', Georgia, serif; font-size: 19px; padding: 6px 0 12px; width: 100%; transition: border-color 0.15s ease-out; } .ds-input-underline::placeholder { color: #9AA1AB; } .ds-input-underline:focus { outline: none; border-bottom-color: #5B7895; }"
+    },
+    {
+      "name": "Entry Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A raised reading surface: warm page, hairline deckle border, generous padding.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-card-eyebrow\">THIS MORNING</span><h3 class=\"ds-card-title\">The garden after the rain</h3><p class=\"ds-card-body\">A short walk turned into a story about the plum tree your father planted.</p></div>",
+      "css": ".ds-card { background: #FBF9F4; border: 1px solid #ECE4D5; border-radius: 14px; padding: 26px; transition: box-shadow 0.2s ease-out; } .ds-card:hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); } .ds-card-eyebrow { font-family: 'Space Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 2.2px; color: #46627E; display: block; margin-bottom: 14px; } .ds-card-title { font-family: 'Newsreader', Georgia, serif; font-size: 26px; font-weight: 400; color: #1E2630; margin: 0 0 10px; } .ds-card-body { font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 16px; line-height: 24px; color: #5A6470; margin: 0; }"
+    },
+    {
+      "name": "Ledger Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Cool-tinted pill for lenses and filters in the archive.",
+      "html": "<span class=\"ds-chip\">Family</span>",
+      "css": ".ds-chip { background: #E3ECF4; color: #46627E; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 6px 12px; display: inline-block; }"
+    },
+    {
+      "name": "Texture Mark",
+      "kind": "custom",
+      "refersTo": "chip",
+      "description": "A Storey's emotional texture as a muted-ink dot and mono label — never a filled banner.",
+      "html": "<span class=\"ds-texture\"><span class=\"ds-texture-dot\"></span>REFLECTIVE</span>",
+      "css": ".ds-texture { display: inline-flex; align-items: center; gap: 7px; font-family: 'Space Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 1.54px; color: #5A6470; } .ds-texture-dot { width: 8px; height: 8px; border-radius: 50%; background: #6B8198; }"
+    },
+    {
+      "name": "Wordmark",
+      "kind": "nav",
+      "refersTo": "label",
+      "description": "The letterspaced mono STOREYBOX mark in Ledger Blue — the archivist's stamp.",
+      "html": "<span class=\"ds-wordmark\">STOREYBOX</span>",
+      "css": ".ds-wordmark { font-family: 'Space Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: 3.12px; color: #5B7895; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Daybook by Lamplight",
+    "overview": "Storeybox Home is a kept personal book and the light it is written by. Every element on screen is one of two things: page — paper cream surfaces, hairline deckle borders, serif entries, small typewriter marginalia — or light — presence rendered as a warm glow, absence as a dark window. The interface reads like a well-loved family daybook: entries accumulate, the binding never changes, and nothing about it feels like software administering recordings. The system is tender, nostalgic, and handcrafted, but never precious. Density is low and unhurried; screens breathe like generously margined pages. Typography carries the hierarchy that other apps delegate to boxes and dividers.",
+    "keyCharacteristics": [
+      "Page-or-light: every element is either printed matter or lamplight; nothing is \"chrome.\"",
+      "Serif-led hierarchy at light weights; mono strictly for marginalia.",
+      "Warm paper field with hairline deckle borders; tinted surfaces over hard containers.",
+      "One ink action color; gold and blue speak rarely and mean something when they do.",
+      "Made for unhurried hands: generous type, 44pt targets, no time pressure."
+    ],
+    "rules": [
+      { "name": "The Page-or-Light Rule", "body": "Every colored element must be justifiable as either printed matter (ink, gold, blue set on paper) or light (glow, presence, playback). If a color exists only to \"brand\" a surface, it is neither, and it goes.", "section": "colors" },
+      { "name": "The Red-Ink Rule", "body": "The red palette appears only when the user is confirming loss — deletion, unpairing. Never for emphasis, badges, or unread counts.", "section": "colors" },
+      { "name": "The One Lamp Rule", "body": "At most one Dusk Glow per screen, behind the one thing that is present and alive (the Box, playback). Two lamps compete; zero is a page at rest, which is fine.", "section": "colors" },
+      { "name": "The Marginalia Rule", "body": "Space Mono never sets a sentence. It labels, counts, and attributes — three or four words, letterspaced, usually uppercase. The moment mono runs to a full clause, it has left the margin and must become Body.", "section": "typography" },
+      { "name": "The Reading-Size Rule", "body": "These sizes are the floor, not the spec: text must scale with the reader's iOS Dynamic Type setting. If a layout breaks at the accessibility sizes, the layout is wrong, not the setting.", "section": "typography" },
+      { "name": "The Lamplight Rule", "body": "Every shadow must read as cast light: blur radius at least 3× the offset, opacity ≤ 0.26, color drawn from ink, never pure black at full strength. If a shadow has a visible hard edge, it is a 2014 app, not a daybook.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do set every action in Ink (#1E2630) and let typography carry hierarchy; a screen should read correctly printed in grayscale.",
+      "Do give every card its 1px Deckle (#ECE4D5) hairline and keep shadows within the Lamplight Rule (opacity ≤ 0.26, blur ≥ 3× offset).",
+      "Do honor Dynamic Type and keep every tappable target at 44×44pt minimum with breathing room — this app must feel easeful at 70.",
+      "Do use SF Symbols for iOS iconography, sized and weighted to the text they sit beside.",
+      "Do keep Space Mono to three-or-four-word marginalia, letterspaced, usually uppercase.",
+      "Do render emotional textures as muted-ink dots and labels drawn from the texture palette."
+    ],
+    "donts": [
+      "Don't build anything that reads as \"a voice-memo utility\": no waveform-led lists, no file-manager tables, no timestamps as the primary label of a Storey.",
+      "Don't borrow from \"a social feed\": no photo-grid layouts, no streaks, no counts-as-achievements, no engagement nudges or badge dots.",
+      "Don't let \"smart-home gadget UI\" in: device stats, signal meters, and sync spinners stay small, mono, and subordinate to the archive — never a status dashboard.",
+      "Don't drift into \"generic SaaS minimalism\": no interchangeable card grids, no hero-metric tiles, no gradient accents. If a screen could belong to any product, it fails.",
+      "Don't imitate the Box's physical record button anywhere in the app, and never reintroduce microphone or capture UI. The Box records; the app remembers.",
+      "Don't set body copy in Ink Faint (#9AA1AB) — it fails 4.5:1 on Paper Cream. Faint is for timestamps and labels beside stronger text.",
+      "Don't use pure-black hard-edged shadows, colored side-stripe borders, gradient text, or glassmorphism. None of these exist in a daybook.",
+      "Don't place more than one Dusk Glow per screen, and never behind static content — light means presence."
+    ]
+  }
+}

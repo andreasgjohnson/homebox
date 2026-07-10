@@ -3,15 +3,17 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { Icon } from '@/components/Icon';
 import {
   buildArchiveMoments,
   fromSlug,
@@ -19,7 +21,7 @@ import {
   type ArchiveMoment,
 } from '@/lib/archiveView';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
-import { colors, fonts, getTextureColor } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ThemeScreen() {
@@ -31,7 +33,7 @@ export default function ThemeScreen() {
   const [storeysFromCloud, setStoreysFromCloud] = useState<StoreyListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const themeName = fromSlug(name) || 'Home';
+  const themeName = fromSlug(name) || 'This theme';
 
   const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
@@ -43,7 +45,8 @@ export default function ThemeScreen() {
     const { data, error } = await listStoreys(session.user.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Theme page load failed:', error.message);
+      setErrorMessage("The archive couldn't be reached. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
     }
@@ -69,8 +72,14 @@ export default function ThemeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
         <View style={[styles.topBar, isPhone && styles.topBarPhone]}>
-          <Pressable onPress={() => router.push('/archive?lens=themes' as Href)} style={styles.backLink}>
-            <Text style={styles.backChevron}>‹</Text>
+          <Pressable
+            accessibilityLabel="Back to Archive"
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => router.push('/archive?lens=themes' as Href)}
+            style={styles.backLink}
+          >
+            <Icon color={colors.muted} fallbackGlyph="‹" name="chevron.left" size={15} />
             <Text style={styles.backText}>Archive</Text>
           </Pressable>
           <StoreyboxWordmark />
@@ -91,18 +100,13 @@ export default function ThemeScreen() {
         ) : null}
 
         {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
+          <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
         ) : null}
 
         {!isLoading && !errorMessage && visibleMoments.length ? (
           <>
-            <TrendPanel label={`HOW OFTEN ${themeName.toUpperCase()} COMES UP`} />
-            <PeriodDivider count={Math.min(visibleMoments.length, 3)} label="THIS MONTH" />
-            <MomentCards moments={visibleMoments.slice(0, 3)} router={router} />
-            <PeriodDivider count={Math.max(visibleMoments.length - 3, 0)} label="EARLIER THIS SPRING" />
-            <MomentCards moments={visibleMoments.slice(3, 6)} router={router} />
+            <PeriodDivider count={visibleMoments.length} label="STOREYS" />
+            <MomentCards moments={visibleMoments} router={router} />
           </>
         ) : null}
 
@@ -126,43 +130,6 @@ function EmptyState({ body, title }: { body: string; title: string }) {
     <View style={styles.emptyState}>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyText}>{body}</Text>
-    </View>
-  );
-}
-
-function TrendPanel({ label }: { label: string }) {
-  const { width } = useWindowDimensions();
-  const isPhone = width < 700;
-  const bars = [12, 18, 18, 29, 40, 52];
-
-  return (
-    <View style={[styles.trendPanel, isPhone && styles.trendPanelPhone]}>
-      <View style={styles.trendHead}>
-        <Text style={styles.trendLabel}>{label}</Text>
-        <Text style={styles.trendRange}>Past 6 months</Text>
-      </View>
-      <View style={styles.bars}>
-        {bars.map((height, index) => (
-          <View key={`${height}-${index}`} style={styles.barWrap}>
-            <View style={styles.barSlot}>
-              <View
-                style={[
-                  styles.bar,
-                  {
-                    backgroundColor: index === bars.length - 1 ? colors.blue : '#BCCCD9',
-                    height,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.barLabel}>{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index]}</Text>
-          </View>
-        ))}
-      </View>
-      <Text style={styles.takeaway}>
-        This theme has been rising since April — and it keeps arriving in the same breath as
-        the future.
-      </Text>
     </View>
   );
 }
@@ -192,6 +159,8 @@ function MomentCards({
     <View style={styles.cards}>
       {moments.map((moment) => (
         <Pressable
+          accessibilityLabel={`Open Storey: ${moment.title}`}
+          accessibilityRole="button"
           key={moment.id}
           onPress={() => router.push(`/archive/${moment.id}` as Href)}
           style={[styles.card, { borderLeftColor: moment.textureColor }]}
@@ -202,10 +171,11 @@ function MomentCards({
               <Text style={styles.cardTexture}>{moment.texture} · {moment.primaryTheme}</Text>
             </View>
             <Text style={styles.cardTitle}>{moment.title}</Text>
-            <Text style={styles.cardExcerpt}>“{moment.excerpt}”</Text>
+            <Text style={styles.cardExcerpt}>
+              {moment.excerpt ? `“${moment.excerpt}”` : 'Still being prepared.'}
+            </Text>
             <Text style={styles.cardProvenance}>{moment.provenanceLabel}</Text>
           </View>
-          <Text style={styles.duration}>3:48</Text>
         </Pressable>
       ))}
     </View>
@@ -248,15 +218,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
-  },
-  backChevron: {
-    color: '#5A6470',
-    fontFamily: fonts.serif,
-    fontSize: 22,
-    lineHeight: 16,
+    minHeight: 44,
   },
   backText: {
-    color: '#5A6470',
+    color: colors.muted,
     fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
@@ -269,7 +234,7 @@ const styles = StyleSheet.create({
     letterSpacing: 3.12,
   },
   privateLabel: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1.32,
@@ -297,7 +262,7 @@ const styles = StyleSheet.create({
     width: 360,
   },
   eyebrow: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
@@ -310,82 +275,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifLight,
     fontSize: 58,
     fontWeight: '300',
-    lineHeight: 61,
+    lineHeight: 66,
     position: 'relative',
   },
   titlePhone: {
     fontSize: 46,
-    lineHeight: 49,
-  },
-  trendPanel: {
-    backgroundColor: '#EAF1F7',
-    borderColor: '#DDE8F0',
-    borderRadius: 18,
-    borderWidth: 1,
-    marginTop: 40,
-    paddingHorizontal: 30,
-    paddingVertical: 26,
-  },
-  trendPanelPhone: {
-    paddingHorizontal: 22,
-    paddingVertical: 22,
-  },
-  trendHead: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 22,
-  },
-  trendLabel: {
-    color: colors.blue,
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.98,
-  },
-  trendRange: {
-    color: '#7E94A8',
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  bars: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    height: 64,
-    justifyContent: 'space-between',
-  },
-  barWrap: {
-    alignItems: 'center',
-    gap: 9,
-  },
-  barSlot: {
-    alignItems: 'center',
-    height: 54,
-    justifyContent: 'flex-end',
-    width: 34,
-  },
-  bar: {
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
-    width: 14,
-  },
-  barLabel: {
-    color: '#8A9BAB',
-    fontFamily: fonts.mono,
-    fontSize: 10,
-  },
-  takeaway: {
-    borderTopColor: '#DBE6EF',
-    borderTopWidth: 1,
-    color: '#3A4A58',
-    fontFamily: fonts.serifItalic,
-    fontSize: 17,
-    fontStyle: 'italic',
-    fontWeight: '400',
-    lineHeight: 25.5,
-    marginTop: 20,
-    paddingTop: 18,
-    textAlign: 'center',
+    lineHeight: 53,
   },
   periodDivider: {
     alignItems: 'center',
@@ -394,7 +289,7 @@ const styles = StyleSheet.create({
     marginTop: 42,
   },
   periodLabel: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 2.2,
@@ -405,7 +300,7 @@ const styles = StyleSheet.create({
     height: 1,
   },
   periodCount: {
-    color: '#A6A092',
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
   },
@@ -434,7 +329,7 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   cardStamp: {
-    color: colors.blue,
+    color: colors.blueDark,
     fontFamily: fonts.monoBold,
     fontSize: 11,
     fontWeight: '700',
@@ -461,19 +356,13 @@ const styles = StyleSheet.create({
     lineHeight: 21.75,
   },
   cardProvenance: {
-    color: '#B0A894',
+    color: colors.muted,
     fontFamily: fonts.mono,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '400',
     letterSpacing: 0.54,
-    lineHeight: 9,
+    lineHeight: 13,
     marginTop: 8,
-  },
-  duration: {
-    alignSelf: 'center',
-    color: '#A6A092',
-    fontFamily: fonts.mono,
-    fontSize: 12,
   },
   feedback: {
     alignItems: 'center',
@@ -484,20 +373,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 15,
     marginTop: 12,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 24,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   emptyState: {
     alignItems: 'center',

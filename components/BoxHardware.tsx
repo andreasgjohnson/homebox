@@ -262,19 +262,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   presenceTitleRecording: {
-    color: '#C0883F',
+    color: colors.goldDark,
   },
   presenceSub: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.mono,
     fontSize: 11,
     fontWeight: '400',
     letterSpacing: 1.32,
-    lineHeight: 11,
+    lineHeight: 15,
     textAlign: 'center',
   },
   presenceSubRecording: {
-    color: '#C07030',
+    color: '#7B592D',
   },
   presenceRule: {
     alignSelf: 'stretch',
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   presenceNote: {
-    color: colors.faint,
+    color: colors.muted,
     fontFamily: fonts.serifLightItalic,
     fontSize: 14,
     fontStyle: 'italic',
