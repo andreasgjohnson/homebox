@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { Icon } from '@/components/Icon';
 import {
   buildArchiveMoments,
@@ -43,7 +44,8 @@ export default function PersonScreen() {
     const { data, error } = await listStoreys(session.user.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Person page load failed:', error.message);
+      setErrorMessage("The archive couldn't be reached. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
     }
@@ -98,9 +100,7 @@ export default function PersonScreen() {
         ) : null}
 
         {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
+          <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
         ) : null}
 
         {!isLoading && !errorMessage && visibleMoments.length ? (
@@ -394,20 +394,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 15,
     marginTop: 12,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 24,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   emptyState: {
     alignItems: 'center',

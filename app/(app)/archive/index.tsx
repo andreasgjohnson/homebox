@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import {
   type ArchiveAggregate,
   type ArchiveLens,
@@ -63,7 +64,8 @@ export default function ArchiveScreen() {
     ]);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Archive load failed:', error.message);
+      setErrorMessage("The archive couldn't be reached. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
       hasLoadedRef.current = true;
@@ -158,9 +160,7 @@ export default function ArchiveScreen() {
           ) : null}
 
           {errorMessage ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>{errorMessage}</Text>
-            </View>
+            <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
           ) : null}
 
           {!isLoading && !errorMessage && activeLens === 'time' ? (
@@ -964,19 +964,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     marginTop: 10,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 24,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });

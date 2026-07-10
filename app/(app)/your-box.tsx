@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import { BoxIllustration, BoxStatusBadge } from '@/components/BoxHardware';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { defaultBox, fetchPrimaryStoreyBox, getBoxStateDetail, type StoreyBox } from '@/lib/box';
 import { colors, fonts } from '@/lib/theme';
 import { useAuth } from '@/providers/AuthProvider';
@@ -26,12 +27,16 @@ export default function YourBoxScreen() {
     setIsLoading(!hasLoadedRef.current);
     const { box: userBox, error } = await fetchPrimaryStoreyBox(session.user.id);
 
-    if (!error) {
+    if (error) {
+      console.warn('Box status load failed:', error);
+    } else {
       hasLoadedRef.current = true;
     }
 
     setBox(userBox);
-    setErrorMessage(error);
+    setErrorMessage(
+      error ? "Your Box couldn't be reached just now. Your Storeys are safe." : null,
+    );
     setIsLoading(false);
   }, [session?.user.id]);
 
@@ -73,9 +78,7 @@ export default function YourBoxScreen() {
         </View>
 
         {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
+          <ErrorNotice message={errorMessage} onRetry={() => void loadBox()} />
         ) : null}
 
         <View style={styles.table}>
@@ -208,20 +211,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemiBold,
     fontSize: 14,
     fontWeight: '600',
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   table: {
     borderColor: colors.border,

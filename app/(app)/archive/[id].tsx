@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { Icon } from '@/components/Icon';
 import { createStoreyAudioSignedUrl, isUploadedStoreyAudioPath } from '@/lib/storeyAudio';
 import {
@@ -58,7 +59,8 @@ export default function StoreyDetailScreen() {
     const { data, error } = await getStorey(id, session.user.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Storey load failed:', error.message);
+      setErrorMessage("This Storey couldn't be opened just now. Your archive is safe.");
     } else {
       setStorey(data);
       setTitleDraft(data.title || '');
@@ -94,7 +96,8 @@ export default function StoreyDetailScreen() {
       }
 
       if (error) {
-        setPlaybackErrorMessage(error.message);
+        console.warn('Playback URL failed:', error.message);
+        setPlaybackErrorMessage("This Storey's audio couldn't be loaded right now.");
         return;
       }
 
@@ -149,7 +152,8 @@ export default function StoreyDetailScreen() {
     const { error } = await deleteStorey(storey.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Storey delete failed:', error.message);
+      setErrorMessage("The Storey couldn't be deleted just now. It is still safely in your archive.");
       setIsDeleting(false);
       return;
     }
@@ -170,7 +174,8 @@ export default function StoreyDetailScreen() {
     const { data, error } = await updateStoreyTitle(storey.id, session.user.id, nextTitle);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Title save failed:', error.message);
+      setErrorMessage("The new title didn't save. Try again in a moment.");
       setIsSavingTitle(false);
       return;
     }
@@ -226,9 +231,10 @@ export default function StoreyDetailScreen() {
         ) : null}
 
         {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
+          <ErrorNotice
+            message={errorMessage}
+            onRetry={!storey ? () => void loadStorey() : undefined}
+          />
         ) : null}
 
         {!isLoading && storey ? (
@@ -788,20 +794,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 15,
     marginTop: 12,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 24,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   disabled: {
     opacity: 0.55,

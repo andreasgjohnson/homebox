@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
@@ -42,7 +43,8 @@ export default function ProfileScreen() {
       }
 
       if (error) {
-        setErrorMessage(error.message);
+        console.warn('Profile load failed:', error.message);
+        setErrorMessage("Your profile couldn't be opened just now.");
       }
 
       setDisplayName(getProfileDisplayName(data) || session.user.email || 'Your archive');
@@ -88,11 +90,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
-        ) : null}
+        {errorMessage ? <ErrorNotice message={errorMessage} /> : null}
 
         <Section title="ACCOUNT">
           <SettingRow label="Name" value={displayName} />
@@ -297,20 +295,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginBottom: 8,
     textAlign: 'center',
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 20,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   feedback: {
     alignItems: 'center',

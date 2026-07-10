@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BoxPresenceCard, BoxStatusBadge } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import {
   buildArchiveMoments,
   getDashboardInsight,
@@ -59,7 +60,8 @@ export default function HomeScreen() {
     ]);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Home archive load failed:', error.message);
+      setErrorMessage("The archive couldn't be reached. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
       hasLoadedRef.current = true;
@@ -131,9 +133,7 @@ export default function HomeScreen() {
           )}
 
           {errorMessage ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>{errorMessage}</Text>
-            </View>
+            <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
           ) : null}
 
           {isLoadingStoreys ? (
@@ -450,20 +450,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     height: 76,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 22,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
   storeyList: {
     borderColor: colors.border,

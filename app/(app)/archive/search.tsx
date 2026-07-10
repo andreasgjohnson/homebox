@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { Icon } from '@/components/Icon';
 import { buildArchiveMoments, getThemeAggregates, toSlug } from '@/lib/archiveView';
 import { listStoreys, type StoreyListItem } from '@/lib/storeys';
@@ -36,7 +37,8 @@ export default function ArchiveSearchScreen() {
     const { data, error } = await listStoreys(session.user.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      console.warn('Search load failed:', error.message);
+      setErrorMessage("Your archive couldn't be searched just now. Your Storeys are safe.");
     } else {
       setStoreysFromCloud(data ?? []);
     }
@@ -108,9 +110,7 @@ export default function ArchiveSearchScreen() {
         ) : null}
 
         {errorMessage ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{errorMessage}</Text>
-          </View>
+          <ErrorNotice message={errorMessage} onRetry={() => void loadStoreys()} />
         ) : null}
 
         {filteredStoreys.length ? (
@@ -307,19 +307,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     marginTop: 10,
-  },
-  notice: {
-    backgroundColor: colors.dangerSurface,
-    borderColor: colors.dangerBorder,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 24,
-    padding: 16,
-  },
-  noticeText: {
-    color: colors.danger,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });
