@@ -28,11 +28,10 @@ type DaybookChromeProps = {
 };
 
 const navItems: Array<{ href: Href; label: string }> = [
-  { href: '/' as Href, label: 'Dashboard' },
+  { href: '/' as Href, label: 'Home' },
   { href: '/archive' as Href, label: 'Archive' },
   { href: '/archive?lens=themes' as Href, label: 'Themes' },
   { href: '/archive?lens=people' as Href, label: 'People' },
-  { href: '/archive' as Href, label: 'Collections' },
   { href: '/your-box' as Href, label: 'Your Box' },
 ];
 
@@ -111,7 +110,7 @@ export function StoreyboxDrawer({
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible={isOpen}>
       <View style={styles.modal}>
-        <Pressable onPress={onClose} style={styles.scrim} />
+        <Pressable accessible={false} importantForAccessibility="no" onPress={onClose} style={styles.scrim} />
         <View style={styles.drawer}>
           <View style={styles.drawerTop}>
             <Text maxFontSizeMultiplier={1.5} style={styles.drawerWordmark}>

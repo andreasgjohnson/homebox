@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   presenceTitleRecording: {
-    color: '#C0883F',
+    color: colors.goldDark,
   },
   presenceSub: {
     color: colors.muted,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   presenceSubRecording: {
-    color: '#C07030',
+    color: '#7B592D',
   },
   presenceRule: {
     alignSelf: 'stretch',

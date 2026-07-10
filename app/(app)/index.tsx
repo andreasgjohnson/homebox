@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BoxPresenceCard, BoxStatusBadge } from '@/components/BoxHardware';
 import { DaybookChrome } from '@/components/DaybookChrome';
 import { ErrorNotice } from '@/components/ErrorNotice';
+import { Icon } from '@/components/Icon';
 import {
   buildArchiveMoments,
   getDashboardInsight,
@@ -156,40 +157,38 @@ export default function HomeScreen() {
           <View style={styles.shelfSection}>
             <Text style={styles.eyebrow}>{shelfPick?.label ?? 'SET OUT FOR YOU'}</Text>
             <View style={styles.shelfStage}>
-              {returnStorey ? <View style={styles.lamp} /> : null}
-              <Pressable
-                accessibilityLabel={
-                  returnStorey ? `Listen back: ${returnStorey.title}` : 'No Storey to revisit yet'
-                }
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !returnStorey }}
-                disabled={!returnStorey}
-                onPress={() =>
-                  returnStorey ? router.push(`/archive/${returnStorey.id}` as Href) : undefined
-                }
-                style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
-              >
-                <Text style={styles.returnProvenance}>
-                  {returnStorey
-                    ? `This Storey came from ${capturedByLabel}.`
-                    : 'Your Box will place something here when the archive has a little more to hold.'}
-                </Text>
-                <Text style={styles.returnTitle}>
-                  {returnStorey?.title ?? 'Your first Storey will return here.'}
-                </Text>
-                {returnStorey ? (
-                  returnStorey.excerpt ? (
-                    <Text style={styles.returnQuote}>"{returnStorey.excerpt}"</Text>
-                  ) : (
-                    <Text style={styles.returnPreparing}>Still being prepared.</Text>
-                  )
-                ) : (
+              {returnStorey ? (
+                <>
+                  <View style={styles.lamp} />
+                  <Pressable
+                    accessibilityLabel={`Listen back: ${returnStorey.title}`}
+                    accessibilityRole="button"
+                    onPress={() => router.push(`/archive/${returnStorey.id}` as Href)}
+                    style={({ pressed }) => [styles.returnShelf, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.returnProvenance}>
+                      This Storey came from {capturedByLabel}.
+                    </Text>
+                    <Text style={styles.returnTitle}>{returnStorey.title}</Text>
+                    {returnStorey.excerpt ? (
+                      <Text style={styles.returnQuote}>"{returnStorey.excerpt}"</Text>
+                    ) : (
+                      <Text style={styles.returnPreparing}>Still being prepared.</Text>
+                    )}
+                    <Text style={styles.listenBack}>Listen back</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <View style={styles.returnShelf}>
+                  <Text style={styles.returnProvenance}>
+                    Your Box will place something here when the archive has a little more to hold.
+                  </Text>
+                  <Text style={styles.returnTitle}>Your first Storey will return here.</Text>
                   <Text style={styles.returnPreparing}>
                     The app is listening for what the Box brings home.
                   </Text>
-                )}
-                {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
-              </Pressable>
+                </View>
+              )}
             </View>
           </View>
           ) : null}
@@ -201,10 +200,12 @@ export default function HomeScreen() {
               <Pressable
                 accessibilityLabel="See all Storeys"
                 accessibilityRole="link"
-                hitSlop={12}
+                hitSlop={8}
                 onPress={() => router.push('/archive' as Href)}
+                style={styles.allLinkButton}
               >
-                <Text style={styles.allLink}>All →</Text>
+                <Text style={styles.allLink}>All</Text>
+                <Icon color={colors.blueDark} fallbackGlyph="→" name="chevron.right" size={11} />
               </Pressable>
             </View>
 
@@ -358,6 +359,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 2.2,
     lineHeight: 13,
+  },
+  allLinkButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+    minHeight: 44,
   },
   allLink: {
     color: colors.blueDark,

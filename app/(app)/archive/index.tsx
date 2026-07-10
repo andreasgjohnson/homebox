@@ -196,7 +196,11 @@ export default function ArchiveScreen() {
                 <View style={styles.pulseColumn}>
                   <Text style={styles.pulseKicker}>LATEST TEXTURE</Text>
                   <Text style={styles.pulseValue}>{topTexture}</Text>
-                  <View style={styles.pulseDots}>
+                  <View
+                    accessibilityLabel={`Recent textures: ${recentTextures.join(', ')}`}
+                    accessible
+                    style={styles.pulseDots}
+                  >
                     {recentTextures.map((texture) => (
                       <View
                         key={texture}
