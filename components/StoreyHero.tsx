@@ -13,12 +13,15 @@ import { BoxIllustration } from '@/components/BoxHardware';
 import { getAuthRedirectUrl } from '@/lib/authRedirect';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
+import { useAuth } from '@/providers/AuthProvider';
 
 export function StoreyHero() {
   const router = useRouter();
+  const { clearRedirectError, redirectError } = useAuth();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const displayMessage = message ?? redirectError;
 
   async function sendLink() {
     const cleanEmail = email.trim().toLowerCase();
@@ -30,6 +33,7 @@ export function StoreyHero() {
 
     setIsSubmitting(true);
     setMessage(null);
+    clearRedirectError();
 
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
@@ -88,7 +92,7 @@ export function StoreyHero() {
             )}
           </Pressable>
           <Text style={styles.helper}>We send a private link. No password needed.</Text>
-          {message ? <Text style={styles.message}>{message}</Text> : null}
+          {displayMessage ? <Text style={styles.message}>{displayMessage}</Text> : null}
         </View>
 
         <Pressable onPress={() => router.push('/onboarding' as Href)} style={styles.onboardingLink}>

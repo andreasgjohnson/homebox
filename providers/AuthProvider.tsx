@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -11,9 +12,13 @@ import {
 import { completeInitialAuthRedirect, subscribeToAuthRedirects } from '@/lib/authRedirect';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 
+const REDIRECT_ERROR_MESSAGE = 'That sign-in link did not work. Send yourself a fresh one.';
+
 type AuthContextValue = {
+  clearRedirectError: () => void;
   configError: string | null;
   isLoading: boolean;
+  redirectError: string | null;
   session: Session | null;
 };
 
@@ -22,6 +27,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [redirectError, setRedirectError] = useState<string | null>(null);
+
+  const clearRedirectError = useCallback(() => {
+    setRedirectError(null);
+  }, []);
 
   useEffect(() => {
     if (supabaseConfigError) {
@@ -33,11 +43,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const unsubscribeFromAuthRedirects = subscribeToAuthRedirects((error) => {
       console.warn('Could not complete auth redirect.', error);
+      if (isMounted) {
+        setRedirectError(REDIRECT_ERROR_MESSAGE);
+      }
     });
 
     void completeInitialAuthRedirect()
       .catch((error) => {
         console.warn('Could not complete initial auth redirect.', error);
+        if (isMounted) {
+          setRedirectError(REDIRECT_ERROR_MESSAGE);
+        }
       })
       .finally(() => {
         void supabase.auth.getSession().then(({ data }) => {
@@ -54,6 +70,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (isMounted) {
         setSession(nextSession);
         setIsLoading(false);
+        if (nextSession) {
+          setRedirectError(null);
+        }
       }
     });
 
@@ -65,8 +84,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo(
-    () => ({ configError: supabaseConfigError, isLoading, session }),
-    [isLoading, session],
+    () => ({
+      clearRedirectError,
+      configError: supabaseConfigError,
+      isLoading,
+      redirectError,
+      session,
+    }),
+    [clearRedirectError, isLoading, redirectError, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
