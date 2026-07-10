@@ -1,9 +1,44 @@
+import {
+  HankenGrotesk_400Regular,
+  HankenGrotesk_500Medium,
+  HankenGrotesk_600SemiBold,
+} from '@expo-google-fonts/hanken-grotesk';
+import {
+  Newsreader_300Light,
+  Newsreader_300Light_Italic,
+  Newsreader_400Regular,
+  Newsreader_400Regular_Italic,
+} from '@expo-google-fonts/newsreader';
+import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
+import { type FontSource, useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { colors } from '@/lib/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+
+SplashScreen.preventAutoHideAsync();
+
+// On web the families load via the Google Fonts <link> in app/+html.tsx; only
+// native needs the bundled files (registered under the exact names lib/theme.ts
+// resolves to).
+const nativeFonts: Record<string, FontSource> =
+  Platform.OS === 'web'
+    ? {}
+    : {
+        Newsreader_300Light,
+        Newsreader_300Light_Italic,
+        Newsreader_400Regular,
+        Newsreader_400Regular_Italic,
+        HankenGrotesk_400Regular,
+        HankenGrotesk_500Medium,
+        HankenGrotesk_600SemiBold,
+        SpaceMono_400Regular,
+        SpaceMono_700Bold,
+      };
 
 function RootNavigator() {
   const { configError, isLoading, session } = useAuth();
@@ -38,6 +73,18 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(nativeFonts);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

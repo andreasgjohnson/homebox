@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: colors.background,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 24,
     fontWeight: '300',
   },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   rowLabel: {
     color: colors.charcoal,
     flex: 1,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: colors.ink,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },

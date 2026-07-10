@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 18,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 16,
     fontStyle: 'italic',
     lineHeight: 24,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   resultExcerpt: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 18,

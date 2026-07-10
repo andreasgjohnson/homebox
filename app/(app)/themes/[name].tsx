@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 58,
     fontWeight: '300',
     lineHeight: 66,
@@ -328,13 +328,13 @@ const styles = StyleSheet.create({
   },
   cardStamp: {
     color: colors.blueDark,
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 11,
     fontWeight: '700',
   },
   cardTexture: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   },
   cardExcerpt: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
     lineHeight: 21.75,

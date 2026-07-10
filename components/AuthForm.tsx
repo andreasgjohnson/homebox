@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 54,
     fontWeight: '300',
     lineHeight: 60.5,
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   promise: {
     color: '#3A4A58',
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 22,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 40,
     fontWeight: '300',
     lineHeight: 44.8,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   message: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 19.5,

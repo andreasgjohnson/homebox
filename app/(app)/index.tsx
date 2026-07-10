@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 15,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   allLink: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   returnProvenance: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 13,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   },
   returnQuote: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 14,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   listenBack: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   stamp: {
     color: colors.blueDark,
-    fontFamily: fonts.mono,
+    fontFamily: fonts.monoBold,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   textureLabel: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 10,
     fontWeight: '500',
     lineHeight: 13,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   },
   storeyExcerpt: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 13,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   observation: {
     color: '#5A6470',
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 17,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
   },
   analyticsMeta: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 8,
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   },
   deepLink: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },

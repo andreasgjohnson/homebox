@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 50,
     fontWeight: '300',
     lineHeight: 55,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 36,
     fontWeight: '300',
     lineHeight: 40,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   connectedText: {
     color: colors.blueDark,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     color: '#4A5568',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   },
   numberText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   ritualNote: {
     color: colors.muted,
     flex: 1,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 15,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 14,
     fontWeight: '500',
   },

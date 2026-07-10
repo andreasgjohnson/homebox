@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   pairButtonText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   tableLabel: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },

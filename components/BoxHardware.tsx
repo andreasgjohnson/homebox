@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   presenceNote: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLightItalic,
     fontSize: 14,
     fontStyle: 'italic',
     fontWeight: '300',
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 17,
