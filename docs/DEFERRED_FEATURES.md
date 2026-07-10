@@ -42,3 +42,7 @@ unless it does something.
 - **Time-period grouping on theme pages** — "This month" / "Earlier this spring" dividers were
   fabricated; the moment list wasn't actually grouped by time. Needs real period bucketing
   (the archive index's time lens already has `getArchivePeriods` to reuse).
+- **People in the archive** — `inferPeople` guessed names with hardcoded regexes (including
+  developer-personal names); removed 2026-07-10, so the People lens and person pages stay
+  empty until processing produces real entity extraction. Needs a `people` output from the
+  transcript pipeline stored on the Storey row.

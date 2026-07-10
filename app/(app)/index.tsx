@@ -79,6 +79,7 @@ export default function HomeScreen() {
   );
 
   const firstName = getFirstName(profileName || session?.user.email);
+  const greetingName = profileName ? getFirstName(profileName) : null;
   const storeys = useMemo(() => buildArchiveMoments(storeysFromCloud), [storeysFromCloud]);
   const themes = useMemo(() => getThemeAggregates(storeys), [storeys]);
   const shelfPick = useMemo(() => getShelfPick(storeys), [storeys]);
@@ -86,7 +87,7 @@ export default function HomeScreen() {
   const recentStoreys = storeys
     .filter((storey) => storey.id !== returnStorey?.id)
     .slice(0, 3);
-  const observation = getDashboardInsight(themes).replace('\n', ' ');
+  const observation = useMemo(() => getDashboardInsight(storeys), [storeys]);
   const capturedByLabel = box.state === 'unpaired' ? 'your Box' : box.name;
 
   async function signOut() {
@@ -109,7 +110,8 @@ export default function HomeScreen() {
         <ScrollView contentContainerStyle={[styles.container, isPhone && styles.containerPhone]}>
           <View style={styles.pageHead}>
             <Text style={styles.greeting}>
-              Good {getDayPart()}, {firstName}.
+              Good {getDayPart()}
+              {greetingName ? `, ${greetingName}` : ''}.
             </Text>
             <Text style={styles.pageDate}>{formatDaybookDate()}</Text>
           </View>
@@ -175,9 +177,17 @@ export default function HomeScreen() {
                 <Text style={styles.returnTitle}>
                   {returnStorey?.title ?? 'Your first Storey will return here.'}
                 </Text>
-                <Text style={styles.returnQuote}>
-                  "{returnStorey?.excerpt ?? 'The app is listening for what the Box brings home.'}"
-                </Text>
+                {returnStorey ? (
+                  returnStorey.excerpt ? (
+                    <Text style={styles.returnQuote}>"{returnStorey.excerpt}"</Text>
+                  ) : (
+                    <Text style={styles.returnPreparing}>Still being prepared.</Text>
+                  )
+                ) : (
+                  <Text style={styles.returnPreparing}>
+                    The app is listening for what the Box brings home.
+                  </Text>
+                )}
                 {returnStorey ? <Text style={styles.listenBack}>Listen back</Text> : null}
               </Pressable>
             </View>
@@ -219,7 +229,7 @@ export default function HomeScreen() {
                         {storey.title}
                       </Text>
                       <Text numberOfLines={1} style={styles.storeyExcerpt}>
-                        "{storey.excerpt}"
+                        {storey.excerpt ? `"${storey.excerpt}"` : 'Still being prepared.'}
                       </Text>
                       <Text style={styles.provenance}>{storey.provenanceLabel}</Text>
                     </View>
@@ -238,7 +248,7 @@ export default function HomeScreen() {
           </View>
           ) : null}
 
-          {!isLoadingStoreys && storeys.length ? (
+          {!isLoadingStoreys && observation ? (
             <View style={styles.observationBand}>
               <Text style={styles.observation}>{observation}</Text>
             </View>
@@ -387,6 +397,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifItalic,
     fontSize: 14,
     fontStyle: 'italic',
+    fontWeight: '400',
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+  returnPreparing: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
+    fontSize: 14,
     fontWeight: '400',
     lineHeight: 21,
     marginBottom: 16,

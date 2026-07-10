@@ -128,7 +128,7 @@ export default function ArchiveSearchScreen() {
                 <View style={styles.resultCopy}>
                   <Text style={styles.resultTitle}>{storey.title}</Text>
                   <Text numberOfLines={1} style={styles.resultExcerpt}>
-                    "{storey.excerpt}"
+                    {storey.excerpt ? `"${storey.excerpt}"` : 'Still being prepared.'}
                   </Text>
                 </View>
               </Pressable>

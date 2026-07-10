@@ -390,23 +390,13 @@ export default function StoreyDetailScreen() {
   );
 }
 
+// Only real memorable_quotes from processing render under "Moments worth
+// keeping" — summary sentences are the app's words, and quotation marks are
+// reserved for the keeper's.
 function getMemorableQuotes(storey: Storey | null): string[] {
-  const quotes = storey?.memorable_quotes?.length
-    ? storey.memorable_quotes
-    : splitSummary(storey?.summary).slice(0, 4);
-
-  return quotes.slice(0, 4).map((quote) => quote.replace(/^["“]|["”]$/g, ''));
-}
-
-function splitSummary(summary: string | null | undefined) {
-  if (!summary) {
-    return [];
-  }
-
-  return summary
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
+  return (storey?.memorable_quotes ?? [])
+    .slice(0, 4)
+    .map((quote) => quote.replace(/^["“]|["”]$/g, ''));
 }
 
 function personalizeSummary(summary: string | null | undefined) {

@@ -42,15 +42,7 @@ export type ShelfPick = {
 
 const ignoredThemeTags = new Set(['draft', 'recorded', 'uploaded', 'uploading', 'processing']);
 const defaultTheme = 'Home';
-const defaultTexture = 'Reflective';
-const peopleMatchers: Array<[string, RegExp]> = [
-  ['Dad', /\b(dad|father)\b/i],
-  ['Mom', /\b(mom|mother)\b/i],
-  ['Izzy', /\bizzy\b/i],
-  ['Johnny', /\bjohnny\b/i],
-  ['Friends', /\b(friend|friends)\b/i],
-  ['Family', /\bfamily\b/i],
-];
+const defaultTexture = 'Unprocessed';
 
 export function buildArchiveMoments(storeys: StoreyListItem[]): ArchiveMoment[] {
   return storeys.map((storey) => {
@@ -61,7 +53,9 @@ export function buildArchiveMoments(storeys: StoreyListItem[]): ArchiveMoment[] 
     return {
       excerpt: getExcerpt(storey.summary),
       id: storey.id,
-      people: inferPeople(`${storey.title ?? ''} ${storey.summary ?? ''} ${tags.join(' ')}`),
+      // People stay empty until processing produces real entity extraction
+      // (docs/DEFERRED_FEATURES.md); the archive never guesses names.
+      people: [],
       primaryTheme: tags[0] ?? defaultTheme,
       provenanceLabel: getStoreyProvenance(storey).label,
       recordedAt: storey.recorded_at,
@@ -284,9 +278,27 @@ function hashString(value: string) {
   return Math.abs(hash);
 }
 
-export function getDashboardInsight(themes: ArchiveAggregate[]) {
-  const topTheme = themes[0]?.name ?? defaultTheme;
-  return `${topTheme} has been\non your mind.`;
+/**
+ * The observation line speaks only when the archive has something real to
+ * say: a theme carried by actual tags on at least two Storeys. Otherwise it
+ * stays silent rather than inventing a pattern.
+ */
+export function getDashboardInsight(moments: ArchiveMoment[]) {
+  const counts = new Map<string, number>();
+
+  moments.forEach((moment) => {
+    moment.tags.forEach((tag) => {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    });
+  });
+
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  if (!top || top[1] < 2) {
+    return null;
+  }
+
+  return `${top[0]} has been on your mind.`;
 }
 
 export function getFirstName(nameOrEmail: string | null | undefined) {
@@ -329,6 +341,8 @@ function toDisplayLabel(value: string) {
 }
 
 function normalizeTexture(texture: string | null | undefined) {
+  // Honesty over polish: an unprocessed Storey shows as Unprocessed in its
+  // own ink, never a fabricated emotional reading.
   if (!texture || texture === 'Unprocessed') {
     return defaultTexture;
   }
@@ -339,20 +353,15 @@ function normalizeTexture(texture: string | null | undefined) {
   return matched ?? texture;
 }
 
+// Empty when processing hasn't produced a summary yet; renderers show an
+// unquoted "still being prepared" line instead. Quotation marks are reserved
+// for the keeper's actual words.
 function getExcerpt(summary: string | null | undefined) {
   if (!summary) {
-    return 'Storeybox is still preparing this Storey.';
+    return '';
   }
 
   return summary.replace(/^["“]|["”]$/g, '').split(/[.!?]\s/)[0] || summary;
-}
-
-function inferPeople(text: string) {
-  const matches = peopleMatchers
-    .filter(([, matcher]) => matcher.test(text))
-    .map(([name]) => name);
-
-  return matches.length ? [...new Set(matches)] : [];
 }
 
 function sortAggregates<T extends { count: number; name: string }>(items: T[]) {

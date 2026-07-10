@@ -171,7 +171,9 @@ function MomentCards({
               <Text style={styles.cardTexture}>{moment.texture} · {moment.primaryTheme}</Text>
             </View>
             <Text style={styles.cardTitle}>{moment.title}</Text>
-            <Text style={styles.cardExcerpt}>“{moment.excerpt}”</Text>
+            <Text style={styles.cardExcerpt}>
+              {moment.excerpt ? `“${moment.excerpt}”` : 'Still being prepared.'}
+            </Text>
             <Text style={styles.cardProvenance}>{moment.provenanceLabel}</Text>
           </View>
         </Pressable>
