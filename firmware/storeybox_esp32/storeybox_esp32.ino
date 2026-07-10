@@ -345,6 +345,9 @@ void syncReadyRecordings() {
 
   SbRecordingMeta meta;
   while (sbRecorderFindReadyMeta(meta, time(nullptr))) {
+    if (sbRecorderRestampStale(meta, time(nullptr))) {
+      Serial.printf("Re-stamped pre-NTP timestamps for %s\n", meta.clientRecordingId.c_str());
+    }
     Serial.printf("Syncing recording: %s\n", meta.clientRecordingId.c_str());
     if (syncOneRecording(meta)) {
       continue;

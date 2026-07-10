@@ -35,6 +35,7 @@ size_t sbRecorderFreeBytes();
 bool sbRecorderFindReadyMeta(SbRecordingMeta &meta, time_t now);
 bool sbRecorderReadMeta(const String &metaPath, SbRecordingMeta &meta);
 bool sbRecorderWriteMeta(const SbRecordingMeta &meta);
+bool sbRecorderRestampStale(SbRecordingMeta &meta, time_t now);
 bool sbRecorderUpdateRetry(const SbRecordingMeta &meta, uint32_t failures, time_t retryNotBefore);
 bool sbRecorderDeleteLocal(const SbRecordingMeta &meta);
 
