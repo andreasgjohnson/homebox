@@ -1,7 +1,6 @@
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,12 +40,16 @@ export default function HomeScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
+
   const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
-    setIsLoadingStoreys(true);
+    // First load shows the skeleton; later focuses refresh silently behind
+    // the data already on screen so the daybook never flickers.
+    setIsLoadingStoreys(!hasLoadedRef.current);
     setErrorMessage(null);
 
     const [{ data, error }, { data: profile }, { box: userBox }] = await Promise.all([
@@ -59,6 +62,7 @@ export default function HomeScreen() {
       setErrorMessage(error.message);
     } else {
       setStoreysFromCloud(data ?? []);
+      hasLoadedRef.current = true;
     }
 
     setBox(userBox);
@@ -124,6 +128,29 @@ export default function HomeScreen() {
             </Pressable>
           )}
 
+          {errorMessage ? (
+            <View style={styles.notice}>
+              <Text style={styles.noticeText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          {isLoadingStoreys ? (
+            <View style={styles.shelfSection}>
+              <View style={styles.skeletonEyebrow} />
+              <View style={styles.skeletonShelf}>
+                <View style={[styles.skeletonBar, { width: '46%' }]} />
+                <View style={[styles.skeletonBar, styles.skeletonBarTitle, { width: '82%' }]} />
+                <View style={[styles.skeletonBar, { width: '64%' }]} />
+              </View>
+              <View style={styles.skeletonRows}>
+                <View style={styles.skeletonRow} />
+                <View style={styles.skeletonRow} />
+                <View style={styles.skeletonRow} />
+              </View>
+            </View>
+          ) : null}
+
+          {!isLoadingStoreys ? (
           <View style={styles.shelfSection}>
             <Text style={styles.eyebrow}>{shelfPick?.label ?? 'SET OUT FOR YOU'}</Text>
             <View style={styles.shelfStage}>
@@ -155,20 +182,9 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </View>
-
-          {isLoadingStoreys ? (
-            <View style={styles.feedback}>
-              <ActivityIndicator color={colors.ink} />
-              <Text style={styles.feedbackText}>Opening your archive...</Text>
-            </View>
           ) : null}
 
-          {errorMessage ? (
-            <View style={styles.notice}>
-              <Text style={styles.noticeText}>{errorMessage}</Text>
-            </View>
-          ) : null}
-
+          {!isLoadingStoreys ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.eyebrow}>RECENT STOREYS</Text>
@@ -220,8 +236,9 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
+          ) : null}
 
-          {storeys.length ? (
+          {!isLoadingStoreys && storeys.length ? (
             <View style={styles.observationBand}>
               <Text style={styles.observation}>{observation}</Text>
             </View>
@@ -264,13 +281,13 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     maxWidth: 480,
-    paddingBottom: 88,
+    paddingBottom: 48,
     paddingHorizontal: 28,
     width: '100%',
   },
   containerPhone: {
     maxWidth: undefined,
-    paddingBottom: 96,
+    paddingBottom: 44,
   },
   pageHead: {
     paddingBottom: 4,
@@ -380,15 +397,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  feedback: {
-    alignItems: 'center',
-    marginTop: 28,
+  skeletonEyebrow: {
+    backgroundColor: colors.border,
+    borderRadius: 6,
+    height: 12,
+    marginBottom: 14,
+    width: 132,
   },
-  feedbackText: {
-    color: colors.muted,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    marginTop: 10,
+  skeletonShelf: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 24,
+  },
+  skeletonBar: {
+    backgroundColor: colors.border,
+    borderRadius: 6,
+    height: 12,
+    opacity: 0.75,
+  },
+  skeletonBarTitle: {
+    height: 18,
+  },
+  skeletonRows: {
+    gap: 10,
+    marginTop: 36,
+  },
+  skeletonRow: {
+    backgroundColor: colors.surfaceWarm,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 76,
   },
   notice: {
     backgroundColor: colors.dangerSurface,

@@ -1,5 +1,5 @@
 import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomTabBar, MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
+import { MenuButton, StoreyboxDrawer, StoreyboxWordmark } from '@/components/DaybookChrome';
 import {
   type ArchiveAggregate,
   type ArchiveLens,
@@ -47,12 +47,14 @@ export default function ArchiveScreen() {
 
   const activeLens: ArchiveLens = lens === 'themes' || lens === 'people' ? lens : 'time';
 
+  const hasLoadedRef = useRef(false);
+
   const loadStoreys = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(!hasLoadedRef.current);
     setErrorMessage(null);
 
     const [{ data, error }, { data: profile }] = await Promise.all([
@@ -64,6 +66,7 @@ export default function ArchiveScreen() {
       setErrorMessage(error.message);
     } else {
       setStoreysFromCloud(data ?? []);
+      hasLoadedRef.current = true;
     }
 
     setProfileName(getProfileDisplayName(profile ?? null));
@@ -222,9 +225,7 @@ export default function ArchiveScreen() {
         </ScrollView>
       </View>
 
-      {isPhone ? (
-        <BottomTabBar activeTab="archive" />
-      ) : (
+      {!isPhone ? (
         <StoreyboxDrawer
           isOpen={isDrawerOpen}
           isSigningOut={isSigningOut}
@@ -237,7 +238,7 @@ export default function ArchiveScreen() {
           userInitial={firstName.slice(0, 1).toUpperCase()}
           userName={profileName || session?.user.email}
         />
-      )}
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -593,7 +594,7 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   mainPhone: {
-    paddingBottom: 96,
+    paddingBottom: 44,
     paddingHorizontal: 24,
     paddingTop: 20,
   },

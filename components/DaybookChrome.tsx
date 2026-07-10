@@ -74,9 +74,7 @@ export function DaybookChrome({
 
       {children}
 
-      {isPhone ? (
-        <BottomTabBar activeTab="home" />
-      ) : (
+      {!isPhone ? (
         <StoreyboxDrawer
           isOpen={isDrawerOpen}
           isSigningOut={isSigningOut}
@@ -89,7 +87,7 @@ export function DaybookChrome({
           userInitial={userInitial}
           userName={userName}
         />
-      )}
+      ) : null}
     </View>
   );
 }
@@ -269,48 +267,84 @@ export function MenuButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-const tabs: Array<{
-  fallbackGlyph: string;
-  href: Href;
-  key: 'home' | 'archive' | 'box' | 'profile';
-  label: string;
-  symbol: 'house' | 'books.vertical' | 'shippingbox' | 'person.crop.circle';
-}> = [
-  { key: 'home', label: 'Home', symbol: 'house', fallbackGlyph: '⌂', href: '/' as Href },
-  { key: 'archive', label: 'Archive', symbol: 'books.vertical', fallbackGlyph: '▱', href: '/archive' as Href },
-  { key: 'box', label: 'Your Box', symbol: 'shippingbox', fallbackGlyph: '◉', href: '/your-box' as Href },
-  { key: 'profile', label: 'Profile', symbol: 'person.crop.circle', fallbackGlyph: '◌', href: '/profile' as Href },
-];
+const tabConfig: Record<
+  string,
+  {
+    fallbackGlyph: string;
+    label: string;
+    symbol: 'house' | 'books.vertical' | 'shippingbox' | 'person.crop.circle';
+  }
+> = {
+  index: { label: 'Home', symbol: 'house', fallbackGlyph: '⌂' },
+  archive: { label: 'Archive', symbol: 'books.vertical', fallbackGlyph: '▱' },
+  'your-box': { label: 'Your Box', symbol: 'shippingbox', fallbackGlyph: '◉' },
+  profile: { label: 'Profile', symbol: 'person.crop.circle', fallbackGlyph: '◌' },
+};
 
-export function BottomTabBar({
-  activeTab,
-}: {
-  activeTab: 'home' | 'archive' | 'box' | 'profile';
-}) {
-  const router = useRouter();
+// Structural subset of @react-navigation/bottom-tabs' BottomTabBarProps, so the
+// bar doesn't couple to the navigator package's exact type version.
+type DaybookTabBarProps = {
+  navigation: {
+    emit: (event: {
+      canPreventDefault: true;
+      target?: string;
+      type: 'tabPress';
+    }) => { defaultPrevented: boolean };
+    navigate: (name: string) => void;
+  };
+  state: {
+    index: number;
+    routes: Array<{ key: string; name: string }>;
+  };
+};
+
+export function DaybookTabBar({ navigation, state }: DaybookTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  if (width >= 700) {
+    return null;
+  }
 
   return (
     <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
+      {state.routes.map((route, index) => {
+        const config = tabConfig[route.name];
+
+        if (!config) {
+          return null;
+        }
+
+        const isActive = state.index === index;
         const color = isActive ? colors.ink : colors.muted;
+
+        function onPress() {
+          const event = navigation.emit({
+            canPreventDefault: true,
+            target: route.key,
+            type: 'tabPress',
+          });
+
+          if (!isActive && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        }
 
         return (
           <Pressable
-            accessibilityLabel={tab.label}
+            accessibilityLabel={config.label}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            key={tab.key}
-            onPress={() => (tab.key === 'profile' ? router.push(tab.href) : router.replace(tab.href))}
+            key={route.key}
+            onPress={onPress}
             style={styles.tabSlot}
           >
-            <Icon color={color} fallbackGlyph={tab.fallbackGlyph} name={tab.symbol} size={22} />
+            <Icon color={color} fallbackGlyph={config.fallbackGlyph} name={config.symbol} size={22} />
             <Text
               maxFontSizeMultiplier={1.2}
               style={[styles.tabLabel, isActive && styles.tabActive]}
             >
-              {tab.label}
+              {config.label}
             </Text>
           </Pressable>
         );
@@ -542,14 +576,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    bottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    left: 0,
     minHeight: 64,
     paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
   },
   tabSlot: {
     alignItems: 'center',

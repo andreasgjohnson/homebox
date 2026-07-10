@@ -1,9 +1,9 @@
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import { BoxIllustration, BoxStatusBadge } from '@/components/BoxHardware';
 import { defaultBox, fetchPrimaryStoreyBox, getBoxStateDetail, type StoreyBox } from '@/lib/box';
 import { colors, fonts } from '@/lib/theme';
@@ -16,13 +16,19 @@ export default function YourBoxScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
+
   const loadBox = useCallback(async () => {
     if (!session?.user.id) {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(!hasLoadedRef.current);
     const { box: userBox, error } = await fetchPrimaryStoreyBox(session.user.id);
+
+    if (!error) {
+      hasLoadedRef.current = true;
+    }
 
     setBox(userBox);
     setErrorMessage(error);
@@ -120,8 +126,6 @@ export default function YourBoxScreen() {
         </View>
 
       </ScrollView>
-
-      <BottomTabBar activeTab="box" />
     </SafeAreaView>
   );
 }
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     maxWidth: 480,
-    paddingBottom: 96,
+    paddingBottom: 40,
     paddingHorizontal: 28,
     width: '100%',
   },

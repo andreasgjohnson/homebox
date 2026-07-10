@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomTabBar, StoreyboxWordmark } from '@/components/DaybookChrome';
+import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import { getProfile, getProfileDisplayName } from '@/lib/profiles';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
@@ -122,8 +122,6 @@ export default function ProfileScreen() {
 
         <Text style={styles.footer}>YOUR STORY STAYS YOURS · PRIVATE BY DEFAULT</Text>
       </ScrollView>
-
-      <BottomTabBar activeTab="profile" />
     </SafeAreaView>
   );
 }
@@ -189,7 +187,7 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     maxWidth: 480,
-    paddingBottom: 96,
+    paddingBottom: 40,
     paddingHorizontal: 28,
     width: '100%',
   },

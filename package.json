@@ -18,6 +18,7 @@
     "@expo-google-fonts/space-mono": "^0.4.2",
     "@expo/metro-runtime": "~56.0.16",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-navigation/bottom-tabs": "^7.18.8",
     "@supabase/supabase-js": "^2.57.4",
     "expo": "~56.0.15",
     "expo-asset": "~56.0.19",
