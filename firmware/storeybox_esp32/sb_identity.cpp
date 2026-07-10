@@ -1,5 +1,7 @@
 #include "sb_identity.h"
 
+#include "sb_config.h"
+
 #include <Preferences.h>
 #include <esp_random.h>
 #include <mbedtls/base64.h>
@@ -190,7 +192,7 @@ void sbIdentitySetPaired(bool paired) {
 
 bool sbIdentityClockReady() {
   time_t now = time(nullptr);
-  return now > 1700000000;
+  return now >= SB_MIN_VALID_EPOCH;
 }
 
 String sbIdentityIsoNow(time_t epoch) {

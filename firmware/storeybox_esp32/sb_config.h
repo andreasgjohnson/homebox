@@ -130,6 +130,11 @@
 #define SB_MIN_RECORD_MS 300
 #endif
 
+// Epochs below this (2023-11-14) mean the RTC has not been NTP-synced yet.
+#ifndef SB_MIN_VALID_EPOCH
+#define SB_MIN_VALID_EPOCH 1700000000
+#endif
+
 #ifndef SB_STORAGE_LOW_WATER_BYTES
 #define SB_STORAGE_LOW_WATER_BYTES 98304
 #endif
