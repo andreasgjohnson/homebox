@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export const colors = {
   background: '#F6F2EA',
   surface: '#FFFFFF',
@@ -28,10 +30,23 @@ export const radii = {
   pill: 999,
 };
 
+// Web uses CSS stacks (families come from the Google Fonts <link> in app/+html.tsx).
+// Native resolves fontFamily to an exact font loaded in app/_layout.tsx, so each
+// weight/style needs its own token — fontWeight alone cannot switch faces on iOS.
+const serifStack = 'Newsreader, Georgia, serif';
+const sansStack = 'Hanken Grotesk, system-ui, sans-serif';
+const monoStack = 'Space Mono, ui-monospace, monospace';
+
 export const fonts = {
-  serif: 'Newsreader, Georgia, serif',
-  sans: 'Hanken Grotesk, system-ui, sans-serif',
-  mono: 'Space Mono, ui-monospace, monospace',
+  serif: Platform.select({ web: serifStack, default: 'Newsreader_400Regular' }),
+  serifLight: Platform.select({ web: serifStack, default: 'Newsreader_300Light' }),
+  serifItalic: Platform.select({ web: serifStack, default: 'Newsreader_400Regular_Italic' }),
+  serifLightItalic: Platform.select({ web: serifStack, default: 'Newsreader_300Light_Italic' }),
+  sans: Platform.select({ web: sansStack, default: 'HankenGrotesk_400Regular' }),
+  sansMedium: Platform.select({ web: sansStack, default: 'HankenGrotesk_500Medium' }),
+  sansSemiBold: Platform.select({ web: sansStack, default: 'HankenGrotesk_600SemiBold' }),
+  mono: Platform.select({ web: monoStack, default: 'SpaceMono_400Regular' }),
+  monoBold: Platform.select({ web: monoStack, default: 'SpaceMono_700Bold' }),
 };
 
 export const typography = {
@@ -42,7 +57,7 @@ export const typography = {
     letterSpacing: 2.2,
   },
   screenTitle: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 46,
     fontWeight: '300' as const,
     lineHeight: 52,

@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   menuText: {
     color: '#5A6470',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -406,13 +406,13 @@ const styles = StyleSheet.create({
   },
   largeAvatarText: {
     color: '#F1EDE4',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 16,
     fontWeight: '600',
   },
   userName: {
     color: colors.ink,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 18,
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: colors.ink,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -509,14 +509,14 @@ const styles = StyleSheet.create({
   },
   tabIcon: {
     color: '#A6A092',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 23,
     fontWeight: '600',
     lineHeight: 24,
   },
   tabLabel: {
     color: '#A6A092',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 10,
     fontWeight: '600',
     lineHeight: 12,

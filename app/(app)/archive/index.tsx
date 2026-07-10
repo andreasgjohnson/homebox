@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   timeRailText: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   },
   searchText: {
     color: colors.muted,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 44,
     fontWeight: '300',
     lineHeight: 44,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   lensText: {
     color: colors.faint,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   },
   periodCount: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   },
   highlight: {
     color: '#5A6470',
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 16,
     fontStyle: 'italic',
     fontWeight: '400',
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
   },
   openLink: {
     color: colors.blue,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 12,
     fontWeight: '500',
     marginTop: 14,
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
   },
   personInitial: {
     color: colors.blue,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 28,
     fontWeight: '300',
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   },
   emptyLensText: {
     color: colors.muted,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifItalic,
     fontSize: 18,
     fontStyle: 'italic',
     lineHeight: 25,

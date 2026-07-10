@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     color: '#5A6470',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.ink,
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifLight,
     fontSize: 34,
     fontWeight: '300',
     lineHeight: 38,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     color: '#4A5568',
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansMedium,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: colors.background,
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemiBold,
     fontSize: 15,
     fontWeight: '600',
   },
