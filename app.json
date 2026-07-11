@@ -43,11 +43,21 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5EFE5"
-      }
+      },
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "single"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "22bc275e-d38c-4af4-b513-9d360dcd5789"
+      }
+    },
+    "owner": "storeybox"
   }
 }
