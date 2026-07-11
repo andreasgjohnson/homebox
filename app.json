@@ -26,7 +26,9 @@
           "imageWidth": 220
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-asset",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
