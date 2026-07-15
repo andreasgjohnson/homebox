@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <time.h>
 
 #include "sb_api.h"
@@ -183,15 +184,39 @@ void updateRingMode() {
   }
 }
 
+// Reads the STA config the esp-wifi stack keeps in NVS; provisioned or
+// seeded credentials land there, never in the firmware image.
+bool wifiCredentialsStored() {
+  wifi_config_t conf = {};
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) {
+    return false;
+  }
+  return conf.sta.ssid[0] != '\0';
+}
+
 bool ensureWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   }
 
-  Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", SB_WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(SB_WIFI_SSID, SB_WIFI_PASSWORD);
+
+  if (!wifiCredentialsStored()) {
+#if defined(SB_WIFI_SSID) && defined(SB_WIFI_PASSWORD)
+    // Dev-only seed from config.h; WiFi.begin persists it to NVS, so
+    // credentials provisioned later always win on subsequent boots.
+    Serial.println("No stored Wi-Fi credentials; seeding from config.h (dev build).");
+    WiFi.begin(SB_WIFI_SSID, SB_WIFI_PASSWORD);
+#else
+    return false;
+#endif
+  } else {
+    wifi_config_t conf = {};
+    esp_wifi_get_config(WIFI_IF_STA, &conf);
+    Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", reinterpret_cast<const char *>(conf.sta.ssid));
+    WiFi.begin();
+  }
 
   uint32_t started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < SB_WIFI_CONNECT_TIMEOUT_MS) {

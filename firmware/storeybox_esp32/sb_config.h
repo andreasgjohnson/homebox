@@ -6,13 +6,9 @@
 #error "Missing firmware/storeybox_esp32/config.h. Copy config.example.h to config.h and fill in Wi-Fi/Supabase settings."
 #endif
 
-#ifndef SB_WIFI_SSID
-#error "SB_WIFI_SSID must be set in config.h."
-#endif
-
-#ifndef SB_WIFI_PASSWORD
-#error "SB_WIFI_PASSWORD must be set in config.h."
-#endif
+// SB_WIFI_SSID / SB_WIFI_PASSWORD are optional dev-only seeds. Production
+// boxes get Wi-Fi credentials over BLE provisioning; they live in NVS, not
+// in the firmware image.
 
 #ifndef SB_SUPABASE_HOST
 #error "SB_SUPABASE_HOST must be set in config.h."
