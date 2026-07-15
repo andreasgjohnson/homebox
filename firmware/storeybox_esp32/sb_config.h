@@ -6,9 +6,8 @@
 #error "Missing firmware/storeybox_esp32/config.h. Copy config.example.h to config.h and fill in Wi-Fi/Supabase settings."
 #endif
 
-// SB_WIFI_SSID / SB_WIFI_PASSWORD are optional dev-only seeds. Production
-// boxes get Wi-Fi credentials over BLE provisioning; they live in NVS, not
-// in the firmware image.
+// Wi-Fi credentials are never compiled in. They arrive over BLE
+// provisioning and live in NVS.
 
 #ifndef SB_SUPABASE_HOST
 #error "SB_SUPABASE_HOST must be set in config.h."
@@ -145,6 +144,23 @@
 
 #ifndef SB_WIFI_CONNECT_TIMEOUT_MS
 #define SB_WIFI_CONNECT_TIMEOUT_MS 20000
+#endif
+
+// Proof of possession for BLE provisioning (security1). Shared dev value;
+// production units should carry a per-device PoP printed on the box.
+#ifndef SB_PROV_POP
+#define SB_PROV_POP "storeybox"
+#endif
+
+// The app scans for BLE devices with this name prefix during setup.
+#ifndef SB_PROV_SERVICE_PREFIX
+#define SB_PROV_SERVICE_PREFIX "STOREYBOX-"
+#endif
+
+// Holding the button this long clears Wi-Fi credentials and reboots into
+// setup mode. Must stay longer than the 5s pairing-code hold.
+#ifndef SB_WIFI_RESET_HOLD_MS
+#define SB_WIFI_RESET_HOLD_MS 10000
 #endif
 
 #ifndef SB_HTTP_TIMEOUT_MS

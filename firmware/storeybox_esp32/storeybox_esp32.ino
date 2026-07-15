@@ -7,6 +7,7 @@
 #include "sb_api.h"
 #include "sb_config.h"
 #include "sb_identity.h"
+#include "sb_provision.h"
 #include "sb_recorder.h"
 #include "sb_ring.h"
 #include "sb_sound.h"
@@ -36,6 +37,7 @@ bool buttonLastRawPressed = false;
 uint32_t buttonLastChangeMs = 0;
 uint32_t buttonPressedAtMs = 0;
 bool buttonLongHandled = false;
+bool buttonWifiResetHandled = false;
 
 void setActiveSessionId(const String &sessionId) {
   portENTER_CRITICAL(&gSessionMux);
@@ -134,10 +136,17 @@ void handleButton() {
   }
 
   if ((now - buttonLastChangeMs) < 35 || rawPressed == buttonStablePressed) {
-    if (buttonStablePressed && !buttonLongHandled && (now - buttonPressedAtMs) > 5000 && !sbRecorderIsRecording()) {
-      buttonLongHandled = true;
-      Serial.println("Long press: requesting a fresh pairing code.");
-      enqueueJob(NET_JOB_PAIRING_CODE);
+    if (buttonStablePressed && !sbRecorderIsRecording()) {
+      uint32_t heldMs = now - buttonPressedAtMs;
+      if (!buttonWifiResetHandled && heldMs > SB_WIFI_RESET_HOLD_MS) {
+        buttonWifiResetHandled = true;
+        buttonLongHandled = true;
+        sbProvisionResetAndReboot();
+      } else if (!buttonLongHandled && heldMs > 5000) {
+        buttonLongHandled = true;
+        Serial.println("Long press: requesting a fresh pairing code.");
+        enqueueJob(NET_JOB_PAIRING_CODE);
+      }
     }
     return;
   }
@@ -146,6 +155,7 @@ void handleButton() {
   if (buttonStablePressed) {
     buttonPressedAtMs = now;
     buttonLongHandled = false;
+    buttonWifiResetHandled = false;
   } else {
     if (!buttonLongHandled) {
       toggleStoreyRecording();
@@ -177,6 +187,8 @@ void updateRingMode() {
     sbRingSetMode(SB_RING_RECORDING);
   } else if (gSyncActive || sbRecorderQueuedCount() > 0) {
     sbRingSetMode(SB_RING_SYNCING);
+  } else if (sbProvisionActive()) {
+    sbRingSetMode(SB_RING_SETUP);
   } else if (!sbIdentityIsPaired()) {
     sbRingSetMode(SB_RING_UNPAIRED);
   } else if (sbRingMode() != SB_RING_ERROR) {
@@ -199,24 +211,22 @@ bool ensureWiFi() {
     return true;
   }
 
+  if (sbProvisionActive()) {
+    // The provisioning manager owns the Wi-Fi driver until setup ends.
+    return false;
+  }
+
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
 
   if (!wifiCredentialsStored()) {
-#if defined(SB_WIFI_SSID) && defined(SB_WIFI_PASSWORD)
-    // Dev-only seed from config.h; WiFi.begin persists it to NVS, so
-    // credentials provisioned later always win on subsequent boots.
-    Serial.println("No stored Wi-Fi credentials; seeding from config.h (dev build).");
-    WiFi.begin(SB_WIFI_SSID, SB_WIFI_PASSWORD);
-#else
     return false;
-#endif
-  } else {
-    wifi_config_t conf = {};
-    esp_wifi_get_config(WIFI_IF_STA, &conf);
-    Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", reinterpret_cast<const char *>(conf.sta.ssid));
-    WiFi.begin();
   }
+
+  wifi_config_t conf = {};
+  esp_wifi_get_config(WIFI_IF_STA, &conf);
+  Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", reinterpret_cast<const char *>(conf.sta.ssid));
+  WiFi.begin();
 
   uint32_t started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < SB_WIFI_CONNECT_TIMEOUT_MS) {
@@ -527,6 +537,11 @@ void setup() {
     Serial.println("Could not create network queue.");
     sbRingFlashError();
     return;
+  }
+
+  WiFi.mode(WIFI_STA);
+  if (!wifiCredentialsStored()) {
+    sbProvisionBegin();
   }
 
   BaseType_t ok = xTaskCreatePinnedToCore(netTask, "sb_net", SB_NET_TASK_STACK_WORDS, nullptr, 1, nullptr, SB_NET_TASK_CORE);

@@ -2,12 +2,10 @@
 
 // Copy this file to config.h and fill in your Supabase project.
 
-// Wi-Fi credentials are provisioned from the Storeybox app over BLE and
-// stored in NVS. The defines below are an OPTIONAL bench convenience: when
-// present they seed NVS once, only if no credentials are stored yet.
-// Leave them commented out for anything that ships.
-// #define SB_WIFI_SSID "your-wifi-name"
-// #define SB_WIFI_PASSWORD "your-wifi-password"
+// Wi-Fi credentials are NOT configured here. They are provisioned over BLE
+// (from the Storeybox app, or Espressif's "ESP BLE Prov" app on the bench)
+// and stored in NVS, where they survive reflashes. Hold the button for 10
+// seconds to erase them and re-enter setup mode.
 
 // Use just the host, not the full function URL.
 // Example: "abcdefghijklmno.supabase.co"

@@ -74,6 +74,15 @@ void sbRingUpdate() {
     return;
   }
 
+  if (mode == SB_RING_SETUP) {
+    float phase = (now % 2200) / 2200.0f;
+    float wave = 0.5f + 0.5f * sinf(phase * TWO_PI);
+    fill(static_cast<uint8_t>(6 + wave * 26),
+         static_cast<uint8_t>(14 + wave * 46),
+         static_cast<uint8_t>(30 + wave * 92));
+    return;
+  }
+
   if (mode == SB_RING_SYNCING) {
     sbWs2812Clear();
     uint16_t head = (now / 90) % SB_LED_RING_COUNT;
@@ -103,6 +112,8 @@ void sbRingUpdate() {
     on = true;
   } else if (mode == SB_RING_UNPAIRED) {
     on = ((now / 700) % 2) == 0;
+  } else if (mode == SB_RING_SETUP) {
+    on = ((now / 350) % 2) == 0;
   } else if (mode == SB_RING_SYNCING) {
     on = ((now / 180) % 2) == 0;
   } else if (mode == SB_RING_ERROR) {
