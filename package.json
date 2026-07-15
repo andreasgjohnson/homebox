@@ -17,6 +17,7 @@
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo-google-fonts/space-mono": "^0.4.2",
     "@expo/metro-runtime": "~57.0.3",
+    "@orbital-systems/react-native-esp-idf-provisioning": "^0.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.18.8",
     "@supabase/supabase-js": "^2.57.4",
