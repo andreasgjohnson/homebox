@@ -157,6 +157,25 @@
 #define SB_PROV_SERVICE_PREFIX "STOREYBOX-"
 #endif
 
+// Custom protocomm endpoint that hands the pairing code to the app over the
+// provisioning session once Wi-Fi is up. Mirrored in lib/boxSetup.ts.
+#ifndef SB_PROV_PAIR_ENDPOINT
+#define SB_PROV_PAIR_ENDPOINT "sb-pair"
+#endif
+
+// How long the provisioning session stays open after Wi-Fi setup succeeds,
+// waiting for the app to collect the pairing code over BLE. When it lapses
+// the session closes and the serial pairing-code path still applies.
+#ifndef SB_PROV_PAIR_LINGER_MS
+#define SB_PROV_PAIR_LINGER_MS 120000
+#endif
+
+// Delay between serving the pairing payload on the sb-pair endpoint and
+// closing the provisioning session, so the response reaches the phone.
+#ifndef SB_PROV_STOP_DELAY_MS
+#define SB_PROV_STOP_DELAY_MS 2000
+#endif
+
 // Holding the button this long clears Wi-Fi credentials and reboots into
 // setup mode. Must stay longer than the 5s pairing-code hold.
 #ifndef SB_WIFI_RESET_HOLD_MS

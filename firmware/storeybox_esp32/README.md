@@ -89,6 +89,15 @@ are reported back to the app and the Box keeps advertising so the app can
 retry without a reboot. On the bench, Espressif's free "ESP BLE Prov" app
 works too.
 
+After Wi-Fi succeeds the session stays open (auto-stop is disabled) so the
+custom `sb-pair` protocomm endpoint can hand over pairing: the Box requests
+a pairing code from `box-api` once online and the app polls `sb-pair`,
+reading `{"status":"pending"}` until the payload with `box_id`,
+`pairing_code`, `pairing_uri`, and `expires_at` is ready (`error` means the
+fetch failed and the app falls back to manual entry). The session closes a
+couple of seconds after the payload is served, or after two minutes if
+nobody asks. The same code is still printed on the serial monitor.
+
 Credentials persist in NVS, so reflashing the sketch does not repeat setup.
 Holding the button for ten seconds erases them and reboots into setup mode
 (device identity and pairing are kept).
@@ -97,9 +106,12 @@ Holding the button for ten seconds erases them and reboots into setup mode
 
 1. Flash the firmware and open the serial monitor at 115200 baud.
 2. Paste the provisioning SQL into Supabase.
-3. Complete Wi-Fi setup from the app if the ring is breathing blue.
-4. The Box syncs NTP and prints a 6-digit pairing code.
-5. In the app, open Your Box and claim the code.
+3. Complete Wi-Fi setup from the app if the ring is breathing blue. The app
+   picks the 6-digit pairing code up over the same Bluetooth session and
+   pre-fills it.
+4. The Box syncs NTP and prints the same 6-digit pairing code on serial.
+5. In the app, confirm the pre-filled code — or open Your Box and enter it
+   by hand.
 6. Press the record button once to start a Storey, speak, then press again to
    stop.
 7. Watch serial logs for `recordings/complete`, `PUT`, `upload-complete`, and

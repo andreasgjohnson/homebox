@@ -17,17 +17,19 @@ import { BoxIllustration } from '@/components/BoxHardware';
 import { StoreyboxWordmark } from '@/components/DaybookChrome';
 import { Icon } from '@/components/Icon';
 import {
+  type BoxPairingInfo,
   type BoxWifiNetwork,
   classifySetupFailure,
   connectToBox,
   disconnectFromBox,
+  fetchBoxPairingInfo,
   findSetupBoxNames,
   listBoxNetworks,
   provisionBox,
 } from '@/lib/boxSetup';
 import { colors, fonts } from '@/lib/theme';
 
-type SetupStep = 'find' | 'networks' | 'password' | 'joining' | 'joined';
+type SetupStep = 'find' | 'networks' | 'password' | 'joining' | 'pairing' | 'joined';
 
 export default function SetupBoxScreen() {
   const router = useRouter();
@@ -37,6 +39,7 @@ export default function SetupBoxScreen() {
   const [networks, setNetworks] = useState<BoxWifiNetwork[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<BoxWifiNetwork | null>(null);
   const [password, setPassword] = useState('');
+  const [pairingInfo, setPairingInfo] = useState<BoxPairingInfo | null>(null);
 
   useEffect(() => () => disconnectFromBox(), []);
 
@@ -97,8 +100,6 @@ export default function SetupBoxScreen() {
 
     try {
       await provisionBox(network.ssid, passphrase);
-      disconnectFromBox();
-      setStep('joined');
     } catch (error) {
       const kind = classifySetupFailure(error);
 
@@ -114,7 +115,17 @@ export default function SetupBoxScreen() {
         setNotice('Setup did not complete. Try again, or start over if it keeps happening.');
         setStep(network.requiresPassword ? 'password' : 'networks');
       }
+      return;
     }
+
+    // The Box holds the Bluetooth session open after joining so it can hand
+    // its pairing code to this phone. Collect it before disconnecting; if it
+    // never arrives, the manual code-entry path on pair-box still works.
+    setStep('pairing');
+    const info = await fetchBoxPairingInfo();
+    disconnectFromBox();
+    setPairingInfo(info);
+    setStep('joined');
   }
 
   function startOver() {
@@ -122,8 +133,24 @@ export default function SetupBoxScreen() {
     setNetworks([]);
     setSelectedNetwork(null);
     setPassword('');
+    setPairingInfo(null);
     setNotice(null);
     setStep('find');
+  }
+
+  function continueToPairing() {
+    if (pairingInfo) {
+      router.replace({
+        pathname: '/pair-box',
+        params: {
+          code: pairingInfo.code,
+          ...(pairingInfo.nonce ? { nonce: pairingInfo.nonce } : {}),
+        },
+      } as Href);
+      return;
+    }
+
+    router.replace('/pair-box' as Href);
   }
 
   return (
@@ -289,23 +316,32 @@ export default function SetupBoxScreen() {
             </>
           ) : null}
 
-          {step === 'joined' ? (
+          {step === 'pairing' ? (
             <>
               <Text style={styles.title}>Your Box is online.</Text>
               <Text style={styles.body}>
-                When the ring settles into a gentle amber, your Box is ready to be paired with
-                your archive.
+                One moment more — it is fetching a pairing code to hand to this phone.
               </Text>
-
-              <PrimaryButton
-                busy={false}
-                label="Continue to pairing"
-                onPress={() => router.replace('/pair-box' as Href)}
-              />
+              <ActivityIndicator color={colors.ink} style={styles.joiningSpinner} />
             </>
           ) : null}
 
-          {step !== 'find' && step !== 'joined' ? (
+          {step === 'joined' ? (
+            <>
+              <Text style={styles.title}>
+                {pairingInfo ? 'Ready to pair.' : 'Your Box is online.'}
+              </Text>
+              <Text style={styles.body}>
+                {pairingInfo
+                  ? 'Your Box handed its pairing code to this phone. One more step brings it into your archive.'
+                  : 'When the ring settles into a gentle amber, your Box is ready to be paired with your archive.'}
+              </Text>
+
+              <PrimaryButton busy={false} label="Continue to pairing" onPress={continueToPairing} />
+            </>
+          ) : null}
+
+          {step !== 'find' && step !== 'joined' && step !== 'pairing' ? (
             <Pressable
               accessibilityLabel="Start setup over"
               accessibilityRole="button"

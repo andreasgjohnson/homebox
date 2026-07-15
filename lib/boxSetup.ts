@@ -21,6 +21,18 @@ export type BoxWifiNetwork = {
 
 export type SetupFailureKind = 'wrong-password' | 'network-not-found' | 'unknown';
 
+export type BoxPairingInfo = {
+  boxId: string | null;
+  code: string;
+  nonce: string | null;
+  expiresAt: string | null;
+};
+
+// Mirrors SB_PROV_PAIR_ENDPOINT in the firmware's sb_config.h.
+const PAIR_ENDPOINT = 'sb-pair';
+const PAIR_POLL_INTERVAL_MS = 1500;
+const PAIR_POLL_TIMEOUT_MS = 45000;
+
 let connectedBox: ESPDevice | null = null;
 
 export async function findSetupBoxNames(): Promise<string[]> {
@@ -80,6 +92,51 @@ export async function provisionBox(ssid: string, password: string): Promise<void
   await connectedBox.provision(ssid, password);
 }
 
+// After provision() succeeds the Box keeps the BLE session open just long
+// enough to hand over the pairing code it fetches once online, so this must
+// run before disconnectFromBox(). The Box answers "pending" until the code
+// arrives from box-api. Returns null when the code cannot be delivered
+// (older firmware, fetch failed on the Box, session closed) — the manual
+// code-entry path in pair-box covers that.
+export async function fetchBoxPairingInfo(): Promise<BoxPairingInfo | null> {
+  if (!connectedBox) {
+    return null;
+  }
+
+  const deadline = Date.now() + PAIR_POLL_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    let raw: string;
+    try {
+      raw = await connectedBox.sendData(PAIR_ENDPOINT, 'status');
+    } catch {
+      return null;
+    }
+
+    const payload = parsePairPayload(raw);
+    if (!payload || payload.status === 'error') {
+      return null;
+    }
+
+    if (payload.status === 'ready') {
+      if (!payload.code) {
+        return null;
+      }
+
+      return {
+        boxId: payload.boxId,
+        code: payload.code,
+        nonce: payload.nonce,
+        expiresAt: payload.expiresAt,
+      };
+    }
+
+    await sleep(PAIR_POLL_INTERVAL_MS);
+  }
+
+  return null;
+}
+
 export function disconnectFromBox(): void {
   try {
     connectedBox?.disconnect();
@@ -87,6 +144,45 @@ export function disconnectFromBox(): void {
     // The session may already be gone; nothing to clean up.
   }
   connectedBox = null;
+}
+
+function parsePairPayload(raw: string): {
+  status: string;
+  code: string | null;
+  boxId: string | null;
+  nonce: string | null;
+  expiresAt: string | null;
+} | null {
+  let data: unknown;
+  try {
+    // The firmware may pad the BLE response with trailing NULs.
+    data = JSON.parse(raw.replace(/\0+$/, '').trim());
+  } catch {
+    return null;
+  }
+
+  if (typeof data !== 'object' || data === null) {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  const uri = typeof record.pairing_uri === 'string' ? record.pairing_uri : null;
+  const nonceMatch = uri ? /[?&]nonce=([^&]+)/.exec(uri) : null;
+
+  return {
+    status: typeof record.status === 'string' ? record.status : '',
+    code:
+      typeof record.pairing_code === 'string' && /^\d{6}$/.test(record.pairing_code)
+        ? record.pairing_code
+        : null,
+    boxId: typeof record.box_id === 'string' ? record.box_id : null,
+    nonce: nonceMatch ? nonceMatch[1] : null,
+    expiresAt: typeof record.expires_at === 'string' ? record.expires_at : null,
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // The native SDKs surface join failures as rejected promises whose messages

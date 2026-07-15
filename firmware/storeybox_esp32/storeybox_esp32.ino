@@ -468,6 +468,7 @@ void netTask(void *) {
   uint32_t lastHeartbeatMs = 0;
   uint32_t lastSyncScanMs = 0;
   bool bootPairCodeRequested = false;
+  uint32_t provPairFetchFailures = 0;
 
   enqueueJob(NET_JOB_HELLO);
 
@@ -478,6 +479,20 @@ void netTask(void *) {
     }
 
     uint32_t now = millis();
+
+    // Wi-Fi arrived over BLE and the app is waiting on the sb-pair endpoint
+    // for a pairing code. One code serves both paths: it goes to the app
+    // over the still-open session and to the serial monitor.
+    if (sbProvisionPairCodeNeeded() && ensureNetworkReady()) {
+      bootPairCodeRequested = true;
+      SbPairingCode pairingCode;
+      if (sbApiIssuePairingCode(pairingCode)) {
+        printPairingCode(pairingCode);
+        sbProvisionPairCodeReady(pairingCode);
+      } else if (++provPairFetchFailures >= 3) {
+        sbProvisionPairCodeFailed();
+      }
+    }
 
     if (!bootPairCodeRequested && !sbIdentityIsPaired() && ensureNetworkReady()) {
       bootPairCodeRequested = true;
@@ -571,6 +586,7 @@ void loop() {
   updateRingMode();
   sbRingUpdate();
   updateButtonLed();
+  sbProvisionUpdate();
 
   delay(5);
 }

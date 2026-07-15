@@ -11,6 +11,13 @@ export type BoxWifiNetwork = {
 
 export type SetupFailureKind = 'wrong-password' | 'network-not-found' | 'unknown';
 
+export type BoxPairingInfo = {
+  boxId: string | null;
+  code: string;
+  nonce: string | null;
+  expiresAt: string | null;
+};
+
 const WEB_UNSUPPORTED = 'Box setup needs the Storeybox iPhone app.';
 
 export async function findSetupBoxNames(): Promise<string[]> {
@@ -27,6 +34,10 @@ export async function listBoxNetworks(): Promise<BoxWifiNetwork[]> {
 
 export async function provisionBox(_ssid: string, _password: string): Promise<void> {
   throw new Error(WEB_UNSUPPORTED);
+}
+
+export async function fetchBoxPairingInfo(): Promise<BoxPairingInfo | null> {
+  return null;
 }
 
 export function disconnectFromBox(): void {}

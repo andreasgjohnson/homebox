@@ -1,4 +1,4 @@
-import { type Href, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,7 +31,12 @@ type ClaimResponse = {
 
 export default function PairBoxScreen() {
   const router = useRouter();
-  const [pairingCode, setPairingCode] = useState('');
+  // Wi-Fi setup hands the pairing code over Bluetooth and lands here with it
+  // pre-filled; without params this is the manual code-entry screen.
+  const params = useLocalSearchParams<{ code?: string; nonce?: string }>();
+  const prefilledCode =
+    typeof params.code === 'string' && /^\d{6}$/.test(params.code) ? params.code : null;
+  const [pairingCode, setPairingCode] = useState(prefilledCode ?? '');
   const [boxName, setBoxName] = useState('');
   const [location, setLocation] = useState('Bedside');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +44,12 @@ export default function PairBoxScreen() {
 
   const cleanCode = pairingCode.replace(/\D/g, '');
   const canSubmit = cleanCode.length === 6 && !isSubmitting;
+  // The nonce proves this phone did the Wi-Fi setup for this exact Box; it
+  // only accompanies the code it was issued with.
+  const pairingNonce =
+    prefilledCode && cleanCode === prefilledCode && typeof params.nonce === 'string' && params.nonce.length > 0
+      ? params.nonce
+      : null;
 
   async function claimBox() {
     if (!canSubmit) {
@@ -51,6 +62,7 @@ export default function PairBoxScreen() {
     const { data, error } = await supabase.functions.invoke<ClaimResponse>('box-api/v1/pairings/claim', {
       body: {
         pairing_code: cleanCode,
+        ...(pairingNonce ? { pairing_nonce: pairingNonce } : {}),
         box_name: boxName.trim() || `${location} Box`,
         location,
       },
@@ -94,15 +106,16 @@ export default function PairBoxScreen() {
 
           <Text style={styles.title}>Pair your Box.</Text>
           <Text style={styles.body}>
-            Your Box shows a six-digit code when it is ready to pair. Enter it here to bring the
-            Box into your archive.
+            {prefilledCode
+              ? 'Your Box handed this code to your phone during setup. Give the Box a name and bring it into your archive.'
+              : 'Your Box shows a six-digit code when it is ready to pair. Enter it here to bring the Box into your archive.'}
           </Text>
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>PAIRING CODE</Text>
             <TextInput
               accessibilityLabel="Pairing code"
-              autoFocus
+              autoFocus={!prefilledCode}
               editable={!isSubmitting}
               keyboardType="number-pad"
               maxLength={6}

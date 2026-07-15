@@ -30,7 +30,9 @@ keep/remove guidance.
    `storeybox://auth/callback`).
 2. The user connects the Box to their home Wi-Fi from the app (BLE unified
    provisioning; credentials live in the Box's NVS, never in firmware), then
-   pairs it.
+   pairs it. Once online, the Box hands its pairing code back over the same
+   BLE session so the app can pre-fill it; manual code entry stays as the
+   fallback.
 3. The Box sends signed heartbeats and status to the backend through the
    `box-api` Edge Function (per-device credentials; see
    [docs/HARDWARE_API_CONTRACT.md](docs/HARDWARE_API_CONTRACT.md)).
