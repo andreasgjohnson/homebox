@@ -395,17 +395,26 @@ function TimeLens({
             <Text style={styles.periodCount}>{period.count} Storeys</Text>
           </View>
           <Text style={styles.periodThemes}>{period.themes}</Text>
-          <View style={styles.highlights}>
-            {period.highlights.map((highlight) => (
+          <View style={styles.periodMoments}>
+            {period.moments.map((moment) => (
               <Pressable
-                accessibilityLabel={`Open Storey: ${highlight.title}`}
+                accessibilityLabel={`Open Storey: ${moment.title}, ${moment.stamp}`}
                 accessibilityRole="button"
                 hitSlop={6}
-                key={highlight.id}
-                onPress={() => router.push(`/archive/${highlight.id}` as Href)}
-                style={styles.highlightRow}
+                key={moment.id}
+                onPress={() => router.push(`/archive/${moment.id}` as Href)}
+                style={({ pressed }) => [styles.momentRow, pressed && styles.momentRowPressed]}
               >
-                <Text style={styles.highlight}>— {highlight.title}</Text>
+                <View style={[styles.momentDot, { backgroundColor: moment.textureColor }]} />
+                <View style={styles.momentCopy}>
+                  <Text style={styles.momentStamp}>{moment.stamp}</Text>
+                  <Text numberOfLines={1} style={styles.momentTitle}>
+                    {moment.title}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.momentExcerpt}>
+                    {moment.excerpt ? `“${moment.excerpt}”` : 'Still being prepared.'}
+                  </Text>
+                </View>
               </Pressable>
             ))}
           </View>
@@ -759,20 +768,56 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 8,
   },
-  highlights: {
-    gap: 9,
+  periodMoments: {
+    gap: 2,
     marginTop: 14,
   },
-  highlightRow: {
-    paddingVertical: 4,
+  momentRow: {
+    alignItems: 'flex-start',
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
-  highlight: {
+  momentRowPressed: {
+    backgroundColor: colors.surfaceWarm,
+  },
+  momentDot: {
+    borderRadius: 4,
+    height: 8,
+    marginTop: 6,
+    width: 8,
+  },
+  momentCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  momentStamp: {
+    color: colors.blueDark,
+    fontFamily: fonts.monoBold,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    lineHeight: 13,
+    marginBottom: 3,
+  },
+  momentTitle: {
+    color: colors.ink,
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    fontWeight: '400',
+    lineHeight: 21,
+  },
+  momentExcerpt: {
     color: colors.muted,
     fontFamily: fonts.serifItalic,
-    fontSize: 16,
+    fontSize: 13,
     fontStyle: 'italic',
     fontWeight: '400',
-    lineHeight: 20.8,
+    lineHeight: 18.2,
+    marginTop: 2,
   },
   themeGrid: {
     flexDirection: 'row',

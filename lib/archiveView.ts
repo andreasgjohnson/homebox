@@ -29,8 +29,10 @@ export type ArchiveAggregate = {
 export type ArchivePeriod = {
   color: string;
   count: number;
-  highlights: ArchiveMoment[];
   label: string;
+  // Every Storey in the period, newest first — the time lens is the archive's
+  // chronological read-through, so it never truncates what the count promises.
+  moments: ArchiveMoment[];
   sub: string;
   themes: string;
 };
@@ -146,22 +148,34 @@ export function getArchivePeriods(moments: ArchiveMoment[]) {
     buckets.set(key, [...(buckets.get(key) ?? []), moment]);
   });
 
-  return [...buckets.entries()].map(([key, bucket]) => {
-    const [label, sub] = key.split('|');
-    const themes = getThemeAggregates(bucket)
-      .slice(0, 3)
-      .map((theme) => theme.name)
-      .join(' · ');
+  return [...buckets.entries()]
+    .map(([key, bucket]) => {
+      const [label, sub] = key.split('|');
+      const ordered = sortByNewest(bucket);
+      const themes = getThemeAggregates(bucket)
+        .slice(0, 3)
+        .map((theme) => theme.name)
+        .join(' · ');
 
-    return {
-      color: bucket[0]?.textureColor ?? getTextureColor(defaultTexture),
-      count: bucket.length,
-      highlights: bucket.slice(0, 2),
-      label,
-      sub,
-      themes: themes || defaultTheme,
-    };
-  });
+      return {
+        color: ordered[0]?.textureColor ?? getTextureColor(defaultTexture),
+        count: ordered.length,
+        label,
+        moments: ordered,
+        sub,
+        themes: themes || defaultTheme,
+      };
+    })
+    // Bucket insertion follows the incoming order, which callers may not have
+    // sorted; ordering by each period's newest Storey keeps the timeline honest.
+    .sort(
+      (a, b) =>
+        (b.moments[0]?.recordedDate.getTime() ?? 0) - (a.moments[0]?.recordedDate.getTime() ?? 0),
+    );
+}
+
+function sortByNewest(moments: ArchiveMoment[]) {
+  return [...moments].sort((a, b) => b.recordedDate.getTime() - a.recordedDate.getTime());
 }
 
 const dayMs = 24 * 60 * 60 * 1000;

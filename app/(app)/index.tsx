@@ -198,13 +198,17 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.eyebrow}>RECENT STOREYS</Text>
               <Pressable
-                accessibilityLabel="See all Storeys"
+                accessibilityLabel={`See all ${storeysFromCloud.length} Storeys, newest first`}
                 accessibilityRole="link"
                 hitSlop={8}
-                onPress={() => router.push('/archive' as Href)}
+                onPress={() => router.push('/archive?lens=time' as Href)}
                 style={styles.allLinkButton}
               >
-                <Text style={styles.allLink}>All</Text>
+                <Text style={styles.allLink}>
+                  {storeysFromCloud.length > recentStoreys.length
+                    ? `All ${storeysFromCloud.length}`
+                    : 'All'}
+                </Text>
                 <Icon color={colors.blueDark} fallbackGlyph="→" name="chevron.right" size={11} />
               </Pressable>
             </View>
