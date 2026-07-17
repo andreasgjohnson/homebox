@@ -80,7 +80,7 @@ The private key never leaves the ESP32.
 ## Wi-Fi Setup
 
 With no Wi-Fi credentials in NVS, the Box boots into setup mode: the ring
-breathes a soft blue and the Box advertises over BLE as
+breathes a bright white and the Box advertises over BLE as
 `STOREYBOX-<last 4 of box id>` using ESP unified provisioning (security1;
 the proof of possession is `SB_PROV_POP`, default `storeybox`). The
 Storeybox app's "Set up your Box" flow sends the home network credentials
@@ -106,7 +106,7 @@ Holding the button for ten seconds erases them and reboots into setup mode
 
 1. Flash the firmware and open the serial monitor at 115200 baud.
 2. Paste the provisioning SQL into Supabase.
-3. Complete Wi-Fi setup from the app if the ring is breathing blue. The app
+3. Complete Wi-Fi setup from the app if the ring is breathing white. The app
    picks the 6-digit pairing code up over the same Bluetooth session and
    pre-fills it.
 4. The Box syncs NTP and prints the same 6-digit pairing code on serial.
@@ -126,7 +126,7 @@ temporarily unavailable.
 
 | State | WS2812 ring | Button LED |
 |---|---|---|
-| Wi-Fi setup | Blue breathing | Slow blink |
+| Wi-Fi setup | White breathing | Slow blink |
 | Unpaired/pairing | Amber breathing | Slow blink |
 | Recording | Solid warm | Solid on |
 | Syncing | Rotating teal comet | Off |
@@ -148,7 +148,7 @@ esp32-arduino-lib-builder or an ESP-IDF component build.
 
 ## Troubleshooting
 
-- Ring breathes blue but the app cannot find the Box: check that the phone
+- Ring breathes white but the app cannot find the Box: check that the phone
   has Bluetooth on and is within a few meters. The Box advertises only
   while it has no stored Wi-Fi credentials; hold the button ten seconds to
   re-enter setup mode.

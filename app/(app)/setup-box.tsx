@@ -52,7 +52,7 @@ export default function SetupBoxScreen() {
 
       if (names.length === 0) {
         setNotice(
-          'No Box found nearby. Make sure it is plugged in and its ring is breathing blue, then try again.',
+          'No Box found nearby. Make sure it is plugged in and its ring is glowing white, then try again.',
         );
         return;
       }
@@ -184,8 +184,8 @@ export default function SetupBoxScreen() {
             <>
               <Text style={styles.title}>Bring your Box online.</Text>
               <Text style={styles.body}>
-                Plug in your Box. When its ring breathes a soft blue, it is ready to meet your
-                home Wi-Fi.
+                Plug in your Box. When its ring breathes a bright white, it is ready to meet
+                your home Wi-Fi.
               </Text>
 
               {notice ? <Notice message={notice} /> : null}

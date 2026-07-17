@@ -75,11 +75,11 @@ void sbRingUpdate() {
   }
 
   if (mode == SB_RING_SETUP) {
+    // Bright white so setup cannot be mistaken for the teal syncing comet.
     float phase = (now % 2200) / 2200.0f;
     float wave = 0.5f + 0.5f * sinf(phase * TWO_PI);
-    fill(static_cast<uint8_t>(6 + wave * 26),
-         static_cast<uint8_t>(14 + wave * 46),
-         static_cast<uint8_t>(30 + wave * 92));
+    uint8_t white = static_cast<uint8_t>(140 + wave * 115);
+    fill(white, white, white);
     return;
   }
 
