@@ -409,6 +409,10 @@ bool sbRecorderIsRecording() {
   return fileOpen && !stopRequested;
 }
 
+bool sbRecorderIsFinalizing() {
+  return fileOpen && stopRequested;
+}
+
 bool sbRecorderFinishedAvailable() {
   return finishedReady;
 }
@@ -606,9 +610,15 @@ bool sbRecorderUpdateRetry(const SbRecordingMeta &meta, uint32_t failures, time_
 }
 
 bool sbRecorderDeleteLocal(const SbRecordingMeta &meta) {
-  bool wavOk = !LittleFS.exists(meta.wavPath) || LittleFS.remove(meta.wavPath);
+  // Remove the meta first: the .json is what queuedCount and findReadyMeta key
+  // off, so dropping it de-queues the recording immediately and lets the ring
+  // leave "syncing". If the WAV then briefly refuses to unlink, the next boot's
+  // salvage pass rebuilds its meta and re-uploads it idempotently (the backend
+  // dedupes on client_recording_id), and the unlink succeeds once the stale
+  // handle is gone.
   bool metaOk = !LittleFS.exists(meta.metaPath) || LittleFS.remove(meta.metaPath);
-  return wavOk && metaOk;
+  bool wavOk = !LittleFS.exists(meta.wavPath) || LittleFS.remove(meta.wavPath);
+  return metaOk && wavOk;
 }
 
 String sbRecorderLastError() {

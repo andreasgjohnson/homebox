@@ -84,16 +84,10 @@ void sbRingUpdate() {
   }
 
   if (mode == SB_RING_SYNCING) {
-    sbWs2812Clear();
-    uint16_t head = (now / 90) % SB_LED_RING_COUNT;
-    for (uint16_t i = 0; i < SB_LED_RING_COUNT; i++) {
-      uint16_t distance = (head + SB_LED_RING_COUNT - i) % SB_LED_RING_COUNT;
-      if (distance < 4) {
-        uint8_t level = 72 - distance * 18;
-        sbWs2812SetPixel(i, 8, level, 76);
-      }
-    }
-    sbWs2812Show();
+    float phase = (now % 2600) / 2600.0f;
+    float wave = 0.5f + 0.5f * sinf(phase * TWO_PI);
+    uint8_t level = static_cast<uint8_t>(6 + wave * 50);
+    fill(level * 2 / 5, level * 3 / 5, level);
     return;
   }
 
