@@ -26,6 +26,7 @@ bool sbRecorderStart(const String &clientRecordingId, const String &startedAt, t
 void sbRecorderRequestStop(bool interrupted = false);
 bool sbRecorderPump();
 bool sbRecorderIsRecording();
+bool sbRecorderIsFinalizing();
 bool sbRecorderFinishedAvailable();
 bool sbRecorderPopFinished(SbRecordingMeta &meta);
 
