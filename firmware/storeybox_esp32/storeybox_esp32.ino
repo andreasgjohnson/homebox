@@ -174,7 +174,8 @@ void updateRingMode() {
 
   if (sbRecorderIsRecording()) {
     sbRingSetMode(SB_RING_RECORDING);
-  } else if (gSyncActive || sbRecorderQueuedCount() > 0) {
+  } else if (sbRecorderIsFinalizing() || sbRecorderFinishedAvailable() || gSyncActive ||
+             sbRecorderQueuedCount() > 0) {
     sbRingSetMode(SB_RING_SYNCING);
   } else if (!sbIdentityIsPaired()) {
     sbRingSetMode(SB_RING_UNPAIRED);
@@ -263,13 +264,15 @@ uint32_t retryDelayForFailures(uint32_t failures) {
 }
 
 bool syncOneRecording(const SbRecordingMeta &meta) {
-  File file = LittleFS.open(meta.wavPath, FILE_READ);
-  if (!file) {
+  // Check existence without opening a handle: opening the WAV here and again
+  // below for the upload leaves the first descriptor lingering across the
+  // recording-start/complete calls, which later blocks the local delete
+  // ("Has open FD") and strands the recording in the sync queue forever.
+  if (!LittleFS.exists(meta.wavPath)) {
     Serial.printf("Missing WAV for %s; deleting stale metadata.\n", meta.clientRecordingId.c_str());
     LittleFS.remove(meta.metaPath);
     return true;
   }
-  file.close();
 
   SbRecordingStartResult started;
   if (!sbApiRecordingStart(meta.clientRecordingId, meta.startedAt, started)) {
@@ -291,7 +294,7 @@ bool syncOneRecording(const SbRecordingMeta &meta) {
     return false;
   }
 
-  file = LittleFS.open(meta.wavPath, FILE_READ);
+  File file = LittleFS.open(meta.wavPath, FILE_READ);
   if (!file) {
     setActiveSessionId("");
     return false;
@@ -333,7 +336,12 @@ bool syncOneRecording(const SbRecordingMeta &meta) {
   sbApiSyncComplete(started.sessionId, deleted);
   setActiveSessionId("");
   Serial.printf("Synced recording: %s\n", meta.clientRecordingId.c_str());
-  return uploadComplete.safeToDeleteLocal && deleted;
+  // The backend has confirmed the upload — the Storey is safe and in the app.
+  // The sync is done once the recording has left the queue (its meta is gone),
+  // NOT gated on the WAV unlink. A stubborn WAV can no longer loop the upload or
+  // hold the ring in "syncing"; if one lingers, the next boot's salvage pass
+  // re-syncs it idempotently and clears it once the stale handle is gone.
+  return uploadComplete.safeToDeleteLocal && !LittleFS.exists(meta.metaPath);
 }
 
 void syncReadyRecordings() {
