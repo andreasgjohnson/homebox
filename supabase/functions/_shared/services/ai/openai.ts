@@ -27,6 +27,16 @@ const summarySystemPrompt = [
   'If the transcript is short, sparse, or unclear, still summarize only what is present.',
 ].join(' ');
 
+// Silence transcribes to nothing. That is a discard, not a failure: callers that
+// know the difference catch this and stop, rather than retrying the same silent
+// audio through Whisper until attempts run out.
+export class EmptyTranscriptionError extends Error {
+  constructor() {
+    super('OpenAI returned an empty transcription.');
+    this.name = 'EmptyTranscriptionError';
+  }
+}
+
 export class OpenAIProvider implements AIProvider {
   constructor(
     private readonly apiKey: string,
@@ -51,7 +61,7 @@ export class OpenAIProvider implements AIProvider {
     const body = await parseOpenAIResponse(response);
 
     if (!isRecord(body) || typeof body.text !== 'string' || body.text.trim().length === 0) {
-      throw new Error('OpenAI returned an empty transcription.');
+      throw new EmptyTranscriptionError();
     }
 
     return body.text.trim();

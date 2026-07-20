@@ -1,7 +1,14 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-import { OpenAIProvider } from '../_shared/services/ai/openai.ts';
+import {
+  countTranscriptWords,
+  describeDiscard,
+  type DiscardReason,
+  hasTooFewWords,
+  isRecordingTooShort,
+} from '../_shared/gates.ts';
+import { EmptyTranscriptionError, OpenAIProvider } from '../_shared/services/ai/openai.ts';
 
 const STOREY_AUDIO_BUCKET = 'memory-audio';
 const MAX_ATTEMPTS = 3;
@@ -148,7 +155,7 @@ async function claimJob(supabase: SupabaseClient, job: JobRow) {
   return claimed && claimed.length > 0 ? (claimed[0] as JobRow) : null;
 }
 
-async function processJob(supabase: SupabaseClient, aiProvider: OpenAIProvider, job: JobRow) {
+export async function processJob(supabase: SupabaseClient, aiProvider: OpenAIProvider, job: JobRow) {
   const { data: storey, error: storeyError } = await supabase
     .from('memories')
     .select('id,user_id,audio_url')
@@ -163,6 +170,17 @@ async function processJob(supabase: SupabaseClient, aiProvider: OpenAIProvider, 
     throw new Error('The Storey has no uploaded audio to process.');
   }
 
+  // The duration gate runs before the audio is downloaded, so a slipped button
+  // costs nothing: no Whisper call, no summarization, no row in the archive.
+  // Current firmware discards these on the Box; this catches the ones that came
+  // from a Box still running older firmware, or were queued before the change.
+  const durationMs = await findRecordingDurationMs(supabase, job.recording_session_id);
+
+  if (isRecordingTooShort(durationMs)) {
+    await discardJob(supabase, job, storey, 'too_short', durationMs ?? 0);
+    return;
+  }
+
   await supabase.from('memories').update({ processing_status: 'transcribing' }).eq('id', storey.id);
 
   const { data: audioBlob, error: downloadError } = await supabase.storage
@@ -173,7 +191,28 @@ async function processJob(supabase: SupabaseClient, aiProvider: OpenAIProvider, 
     throw new Error('Could not download the Storey audio from storage.');
   }
 
-  const transcript = await aiProvider.transcribeAudio(audioBlob, getAudioFileName(storey.audio_url));
+  let transcript: string;
+
+  try {
+    transcript = await aiProvider.transcribeAudio(audioBlob, getAudioFileName(storey.audio_url));
+  } catch (error) {
+    // Silence is not a failure to retry — the audio would transcribe to nothing
+    // again on every attempt, paying Whisper each time to learn the same thing.
+    if (error instanceof EmptyTranscriptionError) {
+      await discardJob(supabase, job, storey, 'too_few_words', 0);
+      return;
+    }
+
+    throw error;
+  }
+
+  // The word gate cannot run any earlier: counting words requires a transcript,
+  // and the transcript is the OpenAI call. What it saves is the summarization
+  // call below, and a near-empty Storey landing in the archive.
+  if (hasTooFewWords(transcript)) {
+    await discardJob(supabase, job, storey, 'too_few_words', countTranscriptWords(transcript));
+    return;
+  }
 
   await supabase.from('storey_processing_jobs').update({ status: 'summarizing' }).eq('id', job.id);
   await supabase.from('memories').update({ processing_status: 'summarizing' }).eq('id', storey.id);
@@ -206,6 +245,68 @@ async function processJob(supabase: SupabaseClient, aiProvider: OpenAIProvider, 
   }
 
   await supabase.from('storey_processing_jobs').update({ status: 'ready' }).eq('id', job.id);
+}
+
+async function findRecordingDurationMs(supabase: SupabaseClient, sessionId: string | null) {
+  if (!sessionId) {
+    return null;
+  }
+
+  const { data: session } = await supabase
+    .from('recording_sessions')
+    .select('duration_ms')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  return typeof session?.duration_ms === 'number' ? session.duration_ms : null;
+}
+
+/**
+ * A discard is terminal and quiet. Nothing went wrong, so this never marks the
+ * job failed, never retries, and never surfaces an error to the keeper — the
+ * Storey is simply dropped and hidden from the archive. The audio goes with it;
+ * keeping a recording the keeper will never see would be storage we cannot
+ * justify, and the row remains as the record that something was let go.
+ */
+async function discardJob(
+  supabase: SupabaseClient,
+  job: JobRow,
+  storey: { id: string; audio_url: string | null },
+  reason: DiscardReason,
+  detail: number,
+) {
+  const note = describeDiscard(reason, detail);
+
+  console.log(`Job ${job.id}: ${note}`);
+
+  if (storey.audio_url) {
+    const { error: removeError } = await supabase.storage
+      .from(STOREY_AUDIO_BUCKET)
+      .remove([storey.audio_url]);
+
+    if (removeError) {
+      // The Storey is still discarded; a stray object is not worth a retry that
+      // would send this audio back through the gates.
+      console.warn(`Job ${job.id}: could not remove discarded audio: ${removeError.message}`);
+    }
+  }
+
+  await supabase
+    .from('memories')
+    .update({ processing_status: 'discarded', audio_url: null })
+    .eq('id', storey.id);
+
+  if (job.recording_session_id) {
+    await supabase
+      .from('recording_sessions')
+      .update({ state: 'discarded' })
+      .eq('id', job.recording_session_id);
+  }
+
+  await supabase
+    .from('storey_processing_jobs')
+    .update({ status: 'discarded', error_code: reason, error_message: note })
+    .eq('id', job.id);
 }
 
 // Retryable failures return to the queue until MAX_ATTEMPTS is reached; the

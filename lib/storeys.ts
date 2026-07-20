@@ -76,6 +76,8 @@ type ListStoreysOptions = {
   head?: boolean;
 };
 
+// Discarded Storeys are slipped buttons the Box or the worker let go; they stay
+// in the table as a record of the decision but never surface as Storeys kept.
 export async function listStoreys(userId: string, options: ListStoreysOptions = {}) {
   return supabase
     .from(storeysTable)
@@ -84,6 +86,7 @@ export async function listStoreys(userId: string, options: ListStoreysOptions = 
       head: options.head,
     })
     .eq('user_id', userId)
+    .neq('processing_status', 'discarded')
     .order('recorded_at', { ascending: false });
 }
 

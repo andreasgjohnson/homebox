@@ -456,6 +456,37 @@ async function handleUploadComplete({ supabase, box, body }: BoxContext, session
     throw new HttpError(409, 'This recording has no allocated upload path yet. Call recordings/complete first.');
   }
 
+  // A Box that loses power between upload-complete and deleting its local file
+  // retries the whole sync, landing here a second time. If the worker already
+  // let this recording go, re-queueing it would restore a Storey whose job is
+  // terminal and will never claim it again — a ghost stuck at "queued" in the
+  // archive. The session's own state cannot answer this: recordings/complete
+  // resets it to 'uploading' on the way back through. The Storey's status is
+  // what survives the retry, so that is what decides.
+  if (await isStoreyDiscarded(supabase, session.storey_id)) {
+    await supabase
+      .from('recording_sessions')
+      .update({ state: 'discarded' })
+      .eq('id', session.id);
+
+    // The retry re-uploaded audio the worker had already deleted; drop it again
+    // rather than leave an object no Storey points at.
+    await supabase.storage.from(STOREY_AUDIO_BUCKET).remove([session.audio_path]);
+    await supabase.from('boxes').update({ cloud_state: 'idle' }).eq('id', box.id);
+
+    return {
+      recordingSessionId: session.id,
+      response: {
+        recording_session_id: session.id,
+        storey_id: session.storey_id,
+        box_state: 'idle',
+        app_box_state: 'idle',
+        discarded: true,
+        safe_to_delete_local: true,
+      },
+    };
+  }
+
   if (upload.bucket !== STOREY_AUDIO_BUCKET || upload.path !== session.audio_path) {
     throw new HttpError(409, 'upload bucket/path does not match the allocated storage object.');
   }
@@ -838,6 +869,18 @@ async function findStorageObjectSize(supabase: SupabaseClient, audioPath: string
   const size = isRecord(entry.metadata) ? entry.metadata.size : null;
 
   return typeof size === 'number' ? size : 0;
+}
+
+// 'discarded' is terminal: once the worker has let a recording go, no retry
+// from the Box brings it back.
+async function isStoreyDiscarded(supabase: SupabaseClient, storeyId: string) {
+  const { data: storey } = await supabase
+    .from('memories')
+    .select('processing_status')
+    .eq('id', storeyId)
+    .maybeSingle();
+
+  return storey?.processing_status === 'discarded';
 }
 
 async function findOrCreateProcessingJob(supabase: SupabaseClient, storeyId: string, sessionId: string) {
