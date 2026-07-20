@@ -126,8 +126,12 @@
 #define SB_MAX_RECORD_SECONDS 180
 #endif
 
+// A Storey shorter than this is a slipped button, not something worth keeping.
+// The Box discards it on the spot: no upload, no cloud, no OpenAI. Keep this in
+// step with MIN_RECORD_MS in supabase/functions/_shared/gates.ts, which catches
+// short recordings from Boxes that have not been reflashed yet.
 #ifndef SB_MIN_RECORD_MS
-#define SB_MIN_RECORD_MS 300
+#define SB_MIN_RECORD_MS 3000
 #endif
 
 // Epochs below this (2023-11-14) mean the RTC has not been NTP-synced yet.
