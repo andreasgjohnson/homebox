@@ -6,6 +6,7 @@
 
 #include <WiFi.h>
 #include <WiFiProv.h>
+#include <esp_bt.h>
 #include <network_provisioning/manager.h>
 
 namespace {
@@ -110,6 +111,30 @@ void sbProvisionBegin() {
   gServiceName = String(SB_PROV_SERVICE_PREFIX) + suffix;
 
   WiFi.onEvent(onProvisionEvent);
+
+  // Core 3.3.10's Bluedroid host unconditionally initializes its Classic-BT
+  // OBEX profile, but the provisioning scheme releases Classic-BT controller
+  // memory up front, so the controller comes up BLE-only and the host dies
+  // at boot with "assert failed: obex_tl_l2cap_init". Initialize the
+  // controller here first — before the scheme can release Classic memory —
+  // so it keeps its dual-mode tables. The scheme's own enable(BTDM) then
+  // succeeds on the INITED controller (its redundant init is non-fatal),
+  // and FREE_BTDM still reclaims everything when provisioning ends. Do not
+  // enable here: the scheme's unconditional enable would fail on an
+  // already-enabled controller.
+  if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE) {
+    esp_bt_controller_config_t btConfig = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    if (esp_bt_controller_init(&btConfig) != ESP_OK) {
+      Serial.println("BT controller init failed; Wi-Fi setup is unavailable.");
+      return;
+    }
+    uint32_t waitStart = millis();
+    while (esp_bt_controller_get_status() != ESP_BT_CONTROLLER_STATUS_INITED &&
+           millis() - waitStart < 1000) {
+      delay(10);
+    }
+  }
+
   gProvisioningActive = true;
 
   // FREE_BTDM releases both classic BT and BLE memory once provisioning
