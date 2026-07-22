@@ -1,9 +1,11 @@
 #pragma once
 
-// Copy this file to config.h and fill in your Wi-Fi and Supabase project.
+// Copy this file to config.h and fill in your Supabase project.
 
-#define SB_WIFI_SSID "your-wifi-name"
-#define SB_WIFI_PASSWORD "your-wifi-password"
+// Wi-Fi credentials are NOT configured here. They are provisioned over BLE
+// (from the Storeybox app, or Espressif's "ESP BLE Prov" app on the bench)
+// and stored in NVS, where they survive reflashes. Hold the button for 10
+// seconds to erase them and re-enter setup mode.
 
 // Use just the host, not the full function URL.
 // Example: "abcdefghijklmno.supabase.co"

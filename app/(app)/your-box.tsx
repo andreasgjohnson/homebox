@@ -66,14 +66,24 @@ export default function YourBoxScreen() {
           <Text style={styles.boxName}>{box.name}</Text>
           {isLoading ? <ActivityIndicator color={colors.ink} /> : <BoxStatusBadge box={box} />}
           {!isLoading && !isPaired ? (
-            <Pressable
-              accessibilityLabel="Pair your Box"
-              accessibilityRole="button"
-              onPress={() => router.push('/pair-box' as Href)}
-              style={styles.pairButton}
-            >
-              <Text style={styles.pairButtonText}>Pair your Box</Text>
-            </Pressable>
+            <>
+              <Pressable
+                accessibilityLabel="Set up your Box"
+                accessibilityRole="button"
+                onPress={() => router.push('/setup-box' as Href)}
+                style={styles.pairButton}
+              >
+                <Text style={styles.pairButtonText}>Set up your Box</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Enter a pairing code"
+                accessibilityRole="button"
+                onPress={() => router.push('/pair-box' as Href)}
+                style={styles.pairCodeLink}
+              >
+                <Text style={styles.pairCodeLinkText}>Already online? Enter a pairing code</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
 
@@ -211,6 +221,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemiBold,
     fontSize: 14,
     fontWeight: '600',
+  },
+  pairCodeLink: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    minHeight: 44,
+  },
+  pairCodeLinkText: {
+    color: colors.blueDark,
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    fontWeight: '500',
   },
   table: {
     borderColor: colors.border,

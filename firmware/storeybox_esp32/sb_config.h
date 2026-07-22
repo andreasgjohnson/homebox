@@ -6,13 +6,8 @@
 #error "Missing firmware/storeybox_esp32/config.h. Copy config.example.h to config.h and fill in Wi-Fi/Supabase settings."
 #endif
 
-#ifndef SB_WIFI_SSID
-#error "SB_WIFI_SSID must be set in config.h."
-#endif
-
-#ifndef SB_WIFI_PASSWORD
-#error "SB_WIFI_PASSWORD must be set in config.h."
-#endif
+// Wi-Fi credentials are never compiled in. They arrive over BLE
+// provisioning and live in NVS.
 
 #ifndef SB_SUPABASE_HOST
 #error "SB_SUPABASE_HOST must be set in config.h."
@@ -149,6 +144,42 @@
 
 #ifndef SB_WIFI_CONNECT_TIMEOUT_MS
 #define SB_WIFI_CONNECT_TIMEOUT_MS 20000
+#endif
+
+// Proof of possession for BLE provisioning (security1). Shared dev value;
+// production units should carry a per-device PoP printed on the box.
+#ifndef SB_PROV_POP
+#define SB_PROV_POP "storeybox"
+#endif
+
+// The app scans for BLE devices with this name prefix during setup.
+#ifndef SB_PROV_SERVICE_PREFIX
+#define SB_PROV_SERVICE_PREFIX "STOREYBOX-"
+#endif
+
+// Custom protocomm endpoint that hands the pairing code to the app over the
+// provisioning session once Wi-Fi is up. Mirrored in lib/boxSetup.ts.
+#ifndef SB_PROV_PAIR_ENDPOINT
+#define SB_PROV_PAIR_ENDPOINT "sb-pair"
+#endif
+
+// How long the provisioning session stays open after Wi-Fi setup succeeds,
+// waiting for the app to collect the pairing code over BLE. When it lapses
+// the session closes and the serial pairing-code path still applies.
+#ifndef SB_PROV_PAIR_LINGER_MS
+#define SB_PROV_PAIR_LINGER_MS 120000
+#endif
+
+// Delay between serving the pairing payload on the sb-pair endpoint and
+// closing the provisioning session, so the response reaches the phone.
+#ifndef SB_PROV_STOP_DELAY_MS
+#define SB_PROV_STOP_DELAY_MS 2000
+#endif
+
+// Holding the button this long clears Wi-Fi credentials and reboots into
+// setup mode. Must stay longer than the 5s pairing-code hold.
+#ifndef SB_WIFI_RESET_HOLD_MS
+#define SB_WIFI_RESET_HOLD_MS 10000
 #endif
 
 #ifndef SB_HTTP_TIMEOUT_MS

@@ -1,7 +1,8 @@
 # Storeybox ESP32 Firmware
 
-Arduino firmware for a classic ESP32-WROOM DevKit Storeybox. It pairs through
-the `box-api` Edge Function, records PCM WAV from an INMP441 microphone, uploads
+Arduino firmware for a classic ESP32-WROOM DevKit Storeybox. It gets its
+Wi-Fi credentials from the Storeybox app over BLE, pairs through the
+`box-api` Edge Function, records PCM WAV from an INMP441 microphone, uploads
 through Supabase signed storage URLs, and keeps local recordings on LittleFS
 until the backend says they are safe to delete.
 
@@ -32,21 +33,24 @@ All pins can be overridden in `config.h`.
 ## Arduino Setup
 
 1. Install Arduino CLI or Arduino IDE.
-2. Install ESP32 Arduino core 3.x and select `esp32:esp32:esp32`.
+2. Install ESP32 Arduino core 3.3.10 and select `esp32:esp32:esp32`. The
+   core version is effectively pinned: the image leaves under 1 KB of IRAM
+   headroom (see the IRAM note below), so verify any core upgrade with a
+   compile before adopting it.
 3. Install Library Manager dependencies:
 
 ```sh
 arduino-cli lib install ArduinoJson
-arduino-cli lib install "Adafruit NeoPixel"
 ```
 
 4. Copy `config.example.h` to `config.h` and fill in:
 
 ```cpp
-#define SB_WIFI_SSID "..."
-#define SB_WIFI_PASSWORD "..."
 #define SB_SUPABASE_HOST "your-project.supabase.co"
 ```
+
+Wi-Fi credentials are never compiled in; they arrive over BLE during Wi-Fi
+setup and persist in NVS across reflashes.
 
 For development, `SB_TLS_INSECURE` defaults to `1`. For production, set it to
 `0` and provide `SB_CA_CERT`.
@@ -73,26 +77,56 @@ The SQL inserts:
 
 The private key never leaves the ESP32.
 
+## Wi-Fi Setup
+
+With no Wi-Fi credentials in NVS, the Box boots into setup mode: the ring
+breathes a bright white and the Box advertises over BLE as
+`STOREYBOX-<last 4 of box id>` using ESP unified provisioning (security1;
+the proof of possession is `SB_PROV_POP`, default `storeybox`). The
+Storeybox app's "Set up your Box" flow sends the home network credentials
+over the encrypted session; wrong-password and network-not-found failures
+are reported back to the app and the Box keeps advertising so the app can
+retry without a reboot. On the bench, Espressif's free "ESP BLE Prov" app
+works too.
+
+After Wi-Fi succeeds the session stays open (auto-stop is disabled) so the
+custom `sb-pair` protocomm endpoint can hand over pairing: the Box requests
+a pairing code from `box-api` once online and the app polls `sb-pair`,
+reading `{"status":"pending"}` until the payload with `box_id`,
+`pairing_code`, `pairing_uri`, and `expires_at` is ready (`error` means the
+fetch failed and the app falls back to manual entry). The session closes a
+couple of seconds after the payload is served, or after two minutes if
+nobody asks. The same code is still printed on the serial monitor.
+
+Credentials persist in NVS, so reflashing the sketch does not repeat setup.
+Holding the button for ten seconds erases them and reboots into setup mode
+(device identity and pairing are kept).
+
 ## Pairing and Recording
 
 1. Flash the firmware and open the serial monitor at 115200 baud.
 2. Paste the provisioning SQL into Supabase.
-3. Reboot the ESP32. It connects to Wi-Fi, syncs NTP, and prints a 6-digit
-   pairing code.
-4. In the app, open Your Box and claim the code.
-5. Press the record button once to start a Storey, speak, then press again to
+3. Complete Wi-Fi setup from the app if the ring is breathing white. The app
+   picks the 6-digit pairing code up over the same Bluetooth session and
+   pre-fills it.
+4. The Box syncs NTP and prints the same 6-digit pairing code on serial.
+5. In the app, confirm the pre-filled code — or open Your Box and enter it
+   by hand.
+6. Press the record button once to start a Storey, speak, then press again to
    stop.
-6. Watch serial logs for `recordings/complete`, `PUT`, `upload-complete`, and
+7. Watch serial logs for `recordings/complete`, `PUT`, `upload-complete`, and
    `Synced recording`.
 
 Short press toggles recording. Holding the button for five seconds while idle
-requests a fresh pairing code. The cached paired flag lets an already-paired Box
-record after reboot even when Wi-Fi is temporarily unavailable.
+requests a fresh pairing code; ten seconds resets Wi-Fi. The cached paired
+flag lets an already-paired Box record after reboot even when Wi-Fi is
+temporarily unavailable.
 
 ## Status Lights
 
 | State | WS2812 ring | Button LED |
 |---|---|---|
+| Wi-Fi setup | White breathing | Slow blink |
 | Unpaired/pairing | Amber breathing | Slow blink |
 | Recording | Solid warm | Solid on |
 | Syncing | Rotating teal comet | Off |
@@ -101,8 +135,23 @@ record after reboot even when Wi-Fi is temporarily unavailable.
 
 If `SB_ENABLE_LED_RING` is set to `0`, GPIO 2 is used as a simple fallback LED.
 
+## IRAM Budget
+
+BLE provisioning, Wi-Fi, TLS, I2S, and LittleFS together nearly fill the
+ESP32's 128 KB IRAM segment; everything in IRAM comes from precompiled core
+libraries, so the only lever is linking fewer of them. That is why the
+WS2812 ring is bit-banged in `sb_ws2812.cpp` instead of using the RMT
+driver, and why the core version is pinned. If a core upgrade overflows
+IRAM again, the durable fix is building the core libraries with a leaner
+sdkconfig (BLE-only controller, Wi-Fi IRAM optimizations off) via
+esp32-arduino-lib-builder or an ESP-IDF component build.
+
 ## Troubleshooting
 
+- Ring breathes white but the app cannot find the Box: check that the phone
+  has Bluetooth on and is within a few meters. The Box advertises only
+  while it has no stored Wi-Fi credentials; hold the button ten seconds to
+  re-enter setup mode.
 - `Signature timestamp is outside the allowed clock skew`: NTP did not sync.
   Check Wi-Fi and DNS.
 - `Unknown or inactive device credential`: the provisioning SQL was not run for

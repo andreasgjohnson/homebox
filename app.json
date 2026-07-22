@@ -10,6 +10,15 @@
     "plugins": [
       "expo-router",
       [
+        "@orbital-systems/react-native-esp-idf-provisioning",
+        {
+          "transport": "ble",
+          "bluetoothAlwaysPermission": "Storeybox uses Bluetooth to find your Box and set up its Wi-Fi connection.",
+          "locationWhenInUsePermission": "Storeybox uses this permission to read Wi-Fi network names during Box setup.",
+          "localNetworkPermission": "Storeybox talks to your Box over your home network during setup."
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": false,

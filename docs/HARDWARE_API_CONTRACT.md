@@ -837,7 +837,7 @@ RLS on the underlying tables should ensure users only see rows where `bm.user_id
 
 - Secure element availability and supported signing algorithms: Ed25519, ECDSA P-256, or HMAC fallback.
 - Whether keys are generated during manufacturing or first boot.
-- Pairing UX: QR code, numeric code, BLE assist, Wi-Fi captive portal, or some combination.
+- Pairing UX: numeric code today. Wi-Fi onboarding is decided and shipped: BLE unified provisioning from the app (see `firmware/storeybox_esp32/README.md`). Open: delivering the pairing code over the BLE setup session so the user never types it.
 - Whether the Box has a display, LED-only pairing, speaker prompts, or app-assisted setup.
 - Audio format, sample rate, channel count, maximum duration, and expected file size.
 - Whether upload needs resumable multipart/TUS support or single signed-object upload is enough.

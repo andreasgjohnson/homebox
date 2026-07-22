@@ -28,7 +28,11 @@ keep/remove guidance.
 
 1. A user signs in with a Supabase magic link (native deep link:
    `storeybox://auth/callback`).
-2. The user pairs their Box from the app.
+2. The user connects the Box to their home Wi-Fi from the app (BLE unified
+   provisioning; credentials live in the Box's NVS, never in firmware), then
+   pairs it. Once online, the Box hands its pairing code back over the same
+   BLE session so the app can pre-fill it; manual code entry stays as the
+   fallback.
 3. The Box sends signed heartbeats and status to the backend through the
    `box-api` Edge Function (per-device credentials; see
    [docs/HARDWARE_API_CONTRACT.md](docs/HARDWARE_API_CONTRACT.md)).
@@ -76,8 +80,9 @@ The ESP32 firmware lives in
 [firmware/storeybox_esp32](firmware/storeybox_esp32). It targets a classic
 ESP32 DevKit with an INMP441 microphone, MAX98357A speaker amp, WS2812 status
 ring, and GPIO record button. The sketch generates its own P-256 device key,
-prints provisioning SQL, pairs through `box-api`, records WAV audio to LittleFS,
-and syncs Storeys through signed upload URLs.
+prints provisioning SQL, gets Wi-Fi credentials from the app over BLE unified
+provisioning (stored in NVS, never compiled in), pairs through `box-api`,
+records WAV audio to LittleFS, and syncs Storeys through signed upload URLs.
 
 ## Local Setup
 

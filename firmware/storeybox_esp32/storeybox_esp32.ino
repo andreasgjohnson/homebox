@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <time.h>
 
 #include "sb_api.h"
 #include "sb_config.h"
 #include "sb_identity.h"
+#include "sb_provision.h"
 #include "sb_recorder.h"
 #include "sb_ring.h"
 #include "sb_sound.h"
@@ -35,6 +37,7 @@ bool buttonLastRawPressed = false;
 uint32_t buttonLastChangeMs = 0;
 uint32_t buttonPressedAtMs = 0;
 bool buttonLongHandled = false;
+bool buttonWifiResetHandled = false;
 
 void setActiveSessionId(const String &sessionId) {
   portENTER_CRITICAL(&gSessionMux);
@@ -133,10 +136,17 @@ void handleButton() {
   }
 
   if ((now - buttonLastChangeMs) < 35 || rawPressed == buttonStablePressed) {
-    if (buttonStablePressed && !buttonLongHandled && (now - buttonPressedAtMs) > 5000 && !sbRecorderIsRecording()) {
-      buttonLongHandled = true;
-      Serial.println("Long press: requesting a fresh pairing code.");
-      enqueueJob(NET_JOB_PAIRING_CODE);
+    if (buttonStablePressed && !sbRecorderIsRecording()) {
+      uint32_t heldMs = now - buttonPressedAtMs;
+      if (!buttonWifiResetHandled && heldMs > SB_WIFI_RESET_HOLD_MS) {
+        buttonWifiResetHandled = true;
+        buttonLongHandled = true;
+        sbProvisionResetAndReboot();
+      } else if (!buttonLongHandled && heldMs > 5000) {
+        buttonLongHandled = true;
+        Serial.println("Long press: requesting a fresh pairing code.");
+        enqueueJob(NET_JOB_PAIRING_CODE);
+      }
     }
     return;
   }
@@ -145,6 +155,7 @@ void handleButton() {
   if (buttonStablePressed) {
     buttonPressedAtMs = now;
     buttonLongHandled = false;
+    buttonWifiResetHandled = false;
   } else {
     if (!buttonLongHandled) {
       toggleStoreyRecording();
@@ -177,6 +188,8 @@ void updateRingMode() {
   } else if (sbRecorderIsFinalizing() || sbRecorderFinishedAvailable() || gSyncActive ||
              sbRecorderQueuedCount() > 0) {
     sbRingSetMode(SB_RING_SYNCING);
+  } else if (sbProvisionActive()) {
+    sbRingSetMode(SB_RING_SETUP);
   } else if (!sbIdentityIsPaired()) {
     sbRingSetMode(SB_RING_UNPAIRED);
   } else if (sbRingMode() != SB_RING_ERROR) {
@@ -184,15 +197,37 @@ void updateRingMode() {
   }
 }
 
+// Reads the STA config the esp-wifi stack keeps in NVS; provisioned or
+// seeded credentials land there, never in the firmware image.
+bool wifiCredentialsStored() {
+  wifi_config_t conf = {};
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) {
+    return false;
+  }
+  return conf.sta.ssid[0] != '\0';
+}
+
 bool ensureWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   }
 
-  Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", SB_WIFI_SSID);
+  if (sbProvisionActive()) {
+    // The provisioning manager owns the Wi-Fi driver until setup ends.
+    return false;
+  }
+
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(SB_WIFI_SSID, SB_WIFI_PASSWORD);
+
+  if (!wifiCredentialsStored()) {
+    return false;
+  }
+
+  wifi_config_t conf = {};
+  esp_wifi_get_config(WIFI_IF_STA, &conf);
+  Serial.printf("Connecting to Wi-Fi SSID \"%s\"...\n", reinterpret_cast<const char *>(conf.sta.ssid));
+  WiFi.begin();
 
   uint32_t started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < SB_WIFI_CONNECT_TIMEOUT_MS) {
@@ -441,6 +476,7 @@ void netTask(void *) {
   uint32_t lastHeartbeatMs = 0;
   uint32_t lastSyncScanMs = 0;
   bool bootPairCodeRequested = false;
+  uint32_t provPairFetchFailures = 0;
 
   enqueueJob(NET_JOB_HELLO);
 
@@ -451,6 +487,20 @@ void netTask(void *) {
     }
 
     uint32_t now = millis();
+
+    // Wi-Fi arrived over BLE and the app is waiting on the sb-pair endpoint
+    // for a pairing code. One code serves both paths: it goes to the app
+    // over the still-open session and to the serial monitor.
+    if (sbProvisionPairCodeNeeded() && ensureNetworkReady()) {
+      bootPairCodeRequested = true;
+      SbPairingCode pairingCode;
+      if (sbApiIssuePairingCode(pairingCode)) {
+        printPairingCode(pairingCode);
+        sbProvisionPairCodeReady(pairingCode);
+      } else if (++provPairFetchFailures >= 3) {
+        sbProvisionPairCodeFailed();
+      }
+    }
 
     if (!bootPairCodeRequested && !sbIdentityIsPaired() && ensureNetworkReady()) {
       bootPairCodeRequested = true;
@@ -512,6 +562,11 @@ void setup() {
     return;
   }
 
+  WiFi.mode(WIFI_STA);
+  if (!wifiCredentialsStored()) {
+    sbProvisionBegin();
+  }
+
   BaseType_t ok = xTaskCreatePinnedToCore(netTask, "sb_net", SB_NET_TASK_STACK_WORDS, nullptr, 1, nullptr, SB_NET_TASK_CORE);
   if (ok != pdPASS) {
     Serial.println("Could not start network task.");
@@ -539,6 +594,7 @@ void loop() {
   updateRingMode();
   sbRingUpdate();
   updateButtonLed();
+  sbProvisionUpdate();
 
   delay(5);
 }
